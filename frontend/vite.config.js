@@ -11,7 +11,8 @@ export default defineConfig({
     server: {
         proxy: {
             '/api': {
-                target: 'http://localhost:8000',
+                // target: 'http://localhost:8000',
+                target: 'https://46.250.239.148/daytoexpense-api',
                 changeOrigin: true,
             },
         },
