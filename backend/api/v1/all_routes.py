@@ -24,7 +24,7 @@ from backend.models.all_models import (
     Transfer, TransactionCategory, TransactionSubcategory,
     Investment, SIPPlan, Budget, BudgetCategory,
     Loan, LoanPayment, Invoice, InvoiceItem, InvoicePayment,
-    Contact, Subscription, Notification,
+    Contact, Subscription, Notification, Setting,
 )
 from backend.schemas.schemas import (
     RegisterRequest, LoginRequest, TokenResponse, RefreshRequest,
@@ -1467,3 +1467,62 @@ async def migration_import(
         })
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# SETTINGS / STATE ROUTER
+# ═══════════════════════════════════════════════════════════════════════════════
+settings_router = APIRouter()
+
+
+@settings_router.get("/{workspace_id}/settings/{key}")
+async def get_setting(
+    workspace_id: str,
+    key: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    _member: WorkspaceMember = Depends(require_workspace_member(WorkspaceRole.VIEWER)),
+):
+    result = await db.execute(
+        select(Setting).where(
+            Setting.workspace_id == workspace_id,
+            Setting.key == key
+        )
+    )
+    setting = result.scalar_one_or_none()
+    if not setting:
+        return success_response(None)
+    return success_response(setting.value)
+
+
+@settings_router.post("/{workspace_id}/settings/{key}")
+async def save_setting(
+    workspace_id: str,
+    key: str,
+    value: dict,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    _member: WorkspaceMember = Depends(require_workspace_member(WorkspaceRole.MEMBER)),
+):
+    result = await db.execute(
+        select(Setting).where(
+            Setting.workspace_id == workspace_id,
+            Setting.key == key
+        )
+    )
+    setting = result.scalar_one_or_none()
+    if not setting:
+        setting = Setting(
+            id=str(uuid.uuid4()),
+            workspace_id=workspace_id,
+            user_id=current_user.id,
+            key=key,
+            value=value,
+        )
+        db.add(setting)
+    else:
+        setting.value = value
+        setting.user_id = current_user.id
+        setting.updated_at = datetime.utcnow()
+    await db.commit()
+    return success_response(setting.value, "Setting saved successfully")

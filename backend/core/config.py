@@ -2,6 +2,7 @@
 DayToExpense — Application Configuration
 Reads all settings from environment variables / .env file with safe defaults
 """
+
 from functools import lru_cache
 from typing import List, Optional, Union
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -10,14 +11,16 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 import os
 from pathlib import Path
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-DEFAULT_DB_PATH = PROJECT_ROOT / "daytoexpense.db"
-# Use forward slashes for SQLAlchemy compatibility on Windows
-DEFAULT_MYSQL_URL = "mysql+pymysql://admin:admin%40123@127.0.0.1:3307/daytodayexpenses"
+BACKEND_DIR = Path(__file__).resolve().parent.parent
+PROJECT_ROOT = BACKEND_DIR.parent
+ENV_FILE_PATH = (
+    BACKEND_DIR / ".env" if (BACKEND_DIR / ".env").exists() else PROJECT_ROOT / ".env"
+)
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=str(ENV_FILE_PATH),
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore",
@@ -29,18 +32,22 @@ class Settings(BaseSettings):
     debug: bool = True
     api_prefix: str = "/api/v1"
 
-    # Database (MySQL Workbench: 127.0.0.1:3307 / daytodayexpenses / admin / admin@123)
-    database_url: str = DEFAULT_MYSQL_URL
+    # Database — loaded strictly from backend/.env (DATABASE_URL)
+    database_url: str = ""
 
     # JWT Authentication
     jwt_secret_key: str = "daytoexpense-dev-secret-key-change-in-production-1234567890"
-    jwt_refresh_secret_key: str = "daytoexpense-dev-refresh-secret-key-change-in-production-1234567890"
+    jwt_refresh_secret_key: str = (
+        "daytoexpense-dev-refresh-secret-key-change-in-production-1234567890"
+    )
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 30
     refresh_token_expire_days: int = 7
 
     # CORS
-    cors_origins: str = "http://localhost:5173,http://localhost:3000,http://127.0.0.1:5173"
+    cors_origins: str = (
+        "http://localhost:5173,http://localhost:3000,http://127.0.0.1:5173"
+    )
 
     # File Uploads
     upload_directory: str = "uploads"
@@ -64,18 +71,20 @@ class Settings(BaseSettings):
     smtp_password: Optional[str] = None
     from_email: str = "noreply@daytoexpense.com"
 
-    # Legacy Migration (MySQL Workbench settings)
-    legacy_db_host: str = "127.0.0.1"
-    legacy_db_port: int = 3307
-    legacy_db_name: str = "daytodayexpenses"
-    legacy_db_user: str = "admin"
-    legacy_db_password: str = "admin@123"
+    # Legacy Migration (loaded strictly from backend/.env)
+    legacy_db_host: str = ""
+    legacy_db_port: int = 5432
+    legacy_db_name: str = ""
+    legacy_db_user: str = ""
+    legacy_db_password: str = ""
 
     @property
     def cors_origins_list(self) -> List[str]:
         if isinstance(self.cors_origins, list):
             return self.cors_origins
-        return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
+        return [
+            origin.strip() for origin in self.cors_origins.split(",") if origin.strip()
+        ]
 
     @property
     def is_production(self) -> bool:

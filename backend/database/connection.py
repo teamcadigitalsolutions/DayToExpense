@@ -20,10 +20,16 @@ from backend.core.config import settings
 def _build_engine_url(url: str) -> str:
     """
     Normalize the DATABASE_URL for async drivers:
+    - Strips inadvertent 'DATABASE_URL=' prefixes
     - postgres:// / postgresql:// / postgresql+psycopg2:// → postgresql+asyncpg://
     - mysql+pymysql:// / mysql:// → mysql+aiomysql:// or mysql+asyncmy://
     - sqlite:// → sqlite+aiosqlite://
     """
+    if not url:
+        raise ValueError("DATABASE_URL environment variable is missing or empty. Please specify DATABASE_URL in backend/.env")
+
+    while url.startswith("DATABASE_URL="):
+        url = url.replace("DATABASE_URL=", "", 1).strip()
     if url.startswith("postgresql+asyncpg://"):
         return url
 
