@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import date, datetime
+from datetime import date as DateType, datetime as DateTimeType, date, datetime
 from decimal import Decimal
 from typing import Any, Generic, List, Optional, TypeVar
 
@@ -294,7 +294,7 @@ class TransactionCreate(BaseModel):
     type: str  # INCOME / EXPENSE / TRANSFER / etc.
     amount: Decimal = Field(..., gt=0, description="Always positive")
     currency_code: str = "INR"
-    date: date
+    date: DateType
     time: Optional[str] = None
     description: Optional[str] = Field(None, max_length=255)
     notes: Optional[str] = None
@@ -324,7 +324,7 @@ class TransactionUpdate(BaseModel):
     category_id: Optional[str] = None
     subcategory_id: Optional[str] = None
     amount: Optional[Decimal] = None
-    date: Optional[date] = None
+    date: Optional[DateType] = None
     description: Optional[str] = None
     notes: Optional[str] = None
     reference_number: Optional[str] = None
@@ -357,7 +357,7 @@ class TransactionResponse(BaseModel):
     amount: Decimal
     currency_code: str
     base_amount: Decimal
-    date: date
+    date: DateType
     description: str
     notes: Optional[str] = None
     reference_number: Optional[str] = None
@@ -391,7 +391,7 @@ class TransferCreate(BaseModel):
     from_account_id: str
     to_account_id: str
     amount: Decimal = Field(..., gt=0)
-    date: date
+    date: DateType
     fee: Decimal = Field(default=Decimal("0"), ge=0)
     reference: Optional[str] = None
     notes: Optional[str] = None
@@ -412,7 +412,7 @@ class TransferResponse(BaseModel):
     to_account_name: Optional[str] = None
     amount: Decimal
     fee: Decimal
-    date: date
+    date: DateType
     reference: Optional[str] = None
     notes: Optional[str] = None
     created_at: datetime
@@ -668,7 +668,7 @@ class LoanResponse(BaseModel):
 
 
 class LoanPaymentCreate(BaseModel):
-    date: date
+    date: DateType
     emi_amount: Decimal = Field(..., gt=0)
     principal_component: Decimal = Field(..., ge=0)
     interest_component: Decimal = Field(..., ge=0)
@@ -678,7 +678,7 @@ class LoanPaymentCreate(BaseModel):
 class LoanPaymentResponse(BaseModel):
     id: str
     loan_id: str
-    date: date
+    date: DateType
     emi_amount: Decimal
     principal_component: Decimal
     interest_component: Decimal
@@ -700,8 +700,8 @@ class InvoiceItemCreate(BaseModel):
 
 class InvoiceCreate(BaseModel):
     customer_id: str
-    date: date
-    due_date: date
+    date: DateType
+    due_date: DateType
     items: List[InvoiceItemCreate] = Field(..., min_length=1)
     gstin: Optional[str] = None
     currency_code: str = "INR"
@@ -711,7 +711,7 @@ class InvoiceCreate(BaseModel):
 
 class InvoiceUpdate(BaseModel):
     customer_id: Optional[str] = None
-    due_date: Optional[date] = None
+    due_date: Optional[DateType] = None
     status: Optional[str] = None
     notes: Optional[str] = None
     terms: Optional[str] = None
@@ -737,8 +737,8 @@ class InvoiceResponse(BaseModel):
     invoice_number: str
     customer_id: str
     customer_name: Optional[str] = None
-    date: date
-    due_date: date
+    date: DateType
+    due_date: DateType
     subtotal: Decimal
     discount_amount: Decimal
     tax_amount: Decimal
@@ -755,7 +755,7 @@ class InvoiceResponse(BaseModel):
 
 
 class InvoicePaymentCreate(BaseModel):
-    date: date
+    date: DateType
     amount: Decimal = Field(..., gt=0)
     payment_method: str = "CASH"
     account_id: Optional[str] = None
