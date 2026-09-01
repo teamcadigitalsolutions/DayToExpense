@@ -62,13 +62,22 @@ app = FastAPI(
 )
 
 # ─── Middleware ────────────────────────────────────────────────────────────────
+# Robust CORS configuration: If wildcard '*' or regex is configured, use allow_origin_regex
+# so that credentials (cookies, auth headers) work seamlessly across any VPS IP or domain even without .env
+cors_origins_list = settings.cors_origins_list
+has_wildcard = "*" in cors_origins_list or not cors_origins_list
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origins_list,
+    allow_origins=[] if has_wildcard else cors_origins_list,
+    allow_origin_regex=settings.cors_origin_regex if (has_wildcard or settings.cors_origin_regex) else None,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
+
+print("Settings:-",settings.cors_origin_regex if (has_wildcard or settings.cors_origin_regex) else None,)
 
 # Rate limiting
 app.state.limiter = limiter

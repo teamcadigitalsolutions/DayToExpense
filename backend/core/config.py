@@ -44,10 +44,11 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 30
     refresh_token_expire_days: int = 7
 
-    # CORS
+    # CORS (Defaults support localhost, VPS IPs, custom domains, and wildcard regex)
     cors_origins: str = (
-        "http://localhost:5173,http://localhost:3000,http://127.0.0.1:5173,https://daytoexpense.onrender.com"
+        "http://localhost:5173,http://localhost:3000,http://127.0.0.1:5173,http://localhost:80,http://localhost:8080,http://localhost,https://localhost,https://daytoexpense.onrender.com,*"
     )
+    cors_origin_regex: Optional[str] = r"^https?://.*"
 
     # File Uploads
     upload_directory: str = "uploads"
@@ -81,9 +82,11 @@ class Settings(BaseSettings):
     @property
     def cors_origins_list(self) -> List[str]:
         if isinstance(self.cors_origins, list):
-            return self.cors_origins
+            return [str(o).strip() for o in self.cors_origins if str(o).strip()]
+        if not self.cors_origins:
+            return ["*"]
         return [
-            origin.strip() for origin in self.cors_origins.split(",") if origin.strip()
+            origin.strip() for origin in str(self.cors_origins).split(",") if origin.strip()
         ]
 
     @property
