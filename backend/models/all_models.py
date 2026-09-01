@@ -8,7 +8,7 @@ notification, audit_log, settings.
 # ──────────────────────────────────────────────────────────────────────────────
 import enum
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Optional, List
 
@@ -87,7 +87,7 @@ class Transfer(Base, UUIDMixin):
     reference: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     notes: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     created_by: Mapped[str] = mapped_column(String(36), ForeignKey("app_users.id"), nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), server_default=func.now())
 
 
 # ─── Contact ─────────────────────────────────────────────────────────────────
@@ -195,7 +195,7 @@ class InvestmentTransaction(Base, UUIDMixin):
     transaction_id: Mapped[Optional[str]] = mapped_column(
         String(36), ForeignKey("transactions.id"), nullable=True
     )
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), server_default=func.now())
 
     investment: Mapped["Investment"] = relationship("Investment", back_populates="inv_transactions")
 
@@ -287,6 +287,7 @@ class LoanType(str, enum.Enum):
     EDUCATION = "EDUCATION"
     BUSINESS = "BUSINESS"
     GOLD = "GOLD"
+    EMPLOYEE = "EMPLOYEE"
     OTHER = "OTHER"
 
 
@@ -341,7 +342,7 @@ class LoanPayment(Base, UUIDMixin):
     interest_component: Mapped[Decimal] = mapped_column(Numeric(18, 4), nullable=False)
     balance_after: Mapped[Decimal] = mapped_column(Numeric(18, 4), nullable=False)
     notes: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), server_default=func.now())
 
     loan: Mapped["Loan"] = relationship("Loan", back_populates="payments")
 
@@ -421,7 +422,7 @@ class InvoicePayment(Base, UUIDMixin):
     amount: Mapped[Decimal] = mapped_column(Numeric(18, 4), nullable=False)
     payment_method: Mapped[str] = mapped_column(String(50), nullable=False)
     notes: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), server_default=func.now())
 
     invoice: Mapped["Invoice"] = relationship("Invoice", back_populates="payments_received")
 
@@ -515,7 +516,7 @@ class ExchangeRate(Base, UUIDMixin):
     rate: Mapped[Decimal] = mapped_column(Numeric(18, 6), nullable=False)
     date: Mapped[datetime] = mapped_column(Date, nullable=False)
     source: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), server_default=func.now())
 
 
 # ─── Attachment ───────────────────────────────────────────────────────────────
@@ -533,7 +534,7 @@ class Attachment(Base, UUIDMixin):
     file_size: Mapped[int] = mapped_column(Integer, nullable=False)
     entity_type: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     entity_id: Mapped[Optional[str]] = mapped_column(String(36), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), server_default=func.now())
 
 
 # ─── Notification ─────────────────────────────────────────────────────────────
@@ -563,7 +564,7 @@ class Notification(Base, UUIDMixin):
     entity_type: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     entity_id: Mapped[Optional[str]] = mapped_column(String(36), nullable=True)
     is_read: Mapped[bool] = mapped_column(Boolean, default=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), server_default=func.now())
 
 
 # ─── AuditLog ─────────────────────────────────────────────────────────────────
@@ -581,7 +582,7 @@ class AuditLog(Base, UUIDMixin):
     new_value: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
     ip_address: Mapped[Optional[str]] = mapped_column(String(45), nullable=True)
     user_agent: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), server_default=func.now())
 
     user: Mapped[Optional["User"]] = relationship("User", back_populates="audit_logs")
 
@@ -598,3 +599,19 @@ class Setting(Base, UUIDMixin, TimestampMixin):
     )
     key: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
     value: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+
+
+# ─── Wishlist Items ───────────────────────────────────────────────────────────
+class WishlistItem(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
+    __tablename__ = "wishlist_items"
+
+    workspace_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    quantity: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False, default=Decimal("1.00"))
+    unit: Mapped[str] = mapped_column(String(50), nullable=False, default="pcs")
+    price: Mapped[Optional[Decimal]] = mapped_column(Numeric(18, 4), nullable=True)
+    is_purchased: Mapped[bool] = mapped_column(Boolean, default=False)
+    notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    created_by: Mapped[Optional[str]] = mapped_column(String(36), nullable=True)

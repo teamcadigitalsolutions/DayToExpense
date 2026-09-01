@@ -107,28 +107,100 @@ class TransactionService:
 
         amount = safe_decimal(data.amount)
 
+        category_id = data.category_id if data.category_id and str(data.category_id).strip() else None
+        subcategory_id = data.subcategory_id if data.subcategory_id and str(data.subcategory_id).strip() else None
+        contact_id = data.contact_id if data.contact_id and str(data.contact_id).strip() else None
+
+        from backend.models.all_models import TransactionCategory, Contact
+        category_name = None
+
+        if category_id:
+            cat_res = await self.db.execute(
+                select(TransactionCategory).where(
+                    TransactionCategory.id == category_id,
+                    TransactionCategory.is_active == True,
+                )
+            )
+            cat_obj = cat_res.scalar_one_or_none()
+            if cat_obj:
+                category_name = cat_obj.name
+            else:
+                dummy_map = {
+                    "cat-exp-1": "Housing & Rent", "cat-exp-01": "Housing & Rent",
+                    "cat-exp-2": "Food & Groceries", "cat-exp-02": "Food & Groceries",
+                    "cat-exp-3": "Utilities & Bills", "cat-exp-03": "Utilities & Bills",
+                    "cat-exp-4": "Transportation & Fuel", "cat-exp-04": "Transportation & Fuel",
+                    "cat-exp-5": "Health & Medical", "cat-exp-05": "Health & Medical",
+                    "cat-exp-6": "Entertainment & Leisure", "cat-exp-06": "Entertainment & Leisure",
+                    "cat-exp-7": "Shopping & Personal", "cat-exp-07": "Shopping & Personal",
+                    "cat-exp-8": "Loans & EMI Repayments", "cat-exp-08": "Loans & EMI Repayments",
+                    "cat-exp-9": "Other Expense", "cat-exp-09": "Other Expense",
+                    "cat-inc-1": "Salary & Wages", "cat-inc-01": "Salary & Wages",
+                    "cat-inc-2": "Business & Freelance", "cat-inc-02": "Business & Freelance",
+                    "cat-inc-3": "Investments & Dividends", "cat-inc-03": "Investments & Dividends",
+                    "cat-inc-4": "Rental & Real Estate", "cat-inc-04": "Rental & Real Estate",
+                    "cat-inc-5": "Interest & Returns", "cat-inc-05": "Interest & Returns",
+                    "cat-inc-6": "Refunds & Cashbacks", "cat-inc-06": "Refunds & Cashbacks",
+                    "cat-inc-7": "Gifts & Allowance", "cat-inc-07": "Gifts & Allowance",
+                    "cat-inc-8": "Other Income", "cat-inc-08": "Other Income",
+                }
+                search_name = dummy_map.get(category_id)
+                if search_name:
+                    find_cat = await self.db.execute(
+                        select(TransactionCategory).where(
+                            TransactionCategory.name == search_name,
+                            TransactionCategory.is_active == True,
+                        )
+                    )
+                    real_cat = find_cat.scalar_one_or_none()
+                    if real_cat:
+                        category_id = real_cat.id
+                        category_name = real_cat.name
+                    else:
+                        category_id = None
+                else:
+                    category_id = None
+
+
+        if contact_id:
+            cnt_res = await self.db.execute(
+                select(Contact.id).where(
+                    Contact.id == contact_id,
+                    Contact.workspace_id == workspace_id,
+                    Contact.is_deleted == False,
+                )
+            )
+            if not cnt_res.scalar_one_or_none():
+                contact_id = None
+
+        desc_text = (data.description or "").strip()
+        if not desc_text:
+            desc_text = category_name or data.type.capitalize()
+
+
         transaction = Transaction(
             id=str(uuid.uuid4()),
             workspace_id=workspace_id,
             account_id=data.account_id,
-            category_id=data.category_id,
-            subcategory_id=data.subcategory_id,
+            category_id=category_id,
+            subcategory_id=subcategory_id,
             type=data.type,
             amount=amount,
             currency_code=data.currency_code or account.currency_code,
             exchange_rate=Decimal("1.000000"),
             base_amount=amount,
             date=data.date,
-            description=data.description,
+            description=desc_text,
             notes=data.notes,
             reference_number=data.reference_number,
             payment_method=data.payment_method,
-            contact_id=data.contact_id,
+            contact_id=contact_id,
             tags=data.tags,
             status=data.status or "COMPLETED",
             is_recurring=False,
             created_by=user_id,
         )
+
         self.db.add(transaction)
 
         # Update account balance

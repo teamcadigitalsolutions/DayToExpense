@@ -193,7 +193,10 @@ class AccountCreate(BaseModel):
 
 class AccountUpdate(BaseModel):
     name: Optional[str] = None
+    account_type: Optional[str] = None
     bank_name: Optional[str] = None
+    currency_code: Optional[str] = None
+    opening_balance: Optional[Decimal] = None
     color: Optional[str] = None
     icon: Optional[str] = None
     notes: Optional[str] = None
@@ -201,6 +204,7 @@ class AccountUpdate(BaseModel):
     billing_date: Optional[int] = None
     due_date: Optional[int] = None
     is_active: Optional[bool] = None
+
 
 
 class AccountResponse(BaseModel):
@@ -292,13 +296,20 @@ class TransactionCreate(BaseModel):
     currency_code: str = "INR"
     date: date
     time: Optional[str] = None
-    description: str = Field(..., min_length=1, max_length=255)
+    description: Optional[str] = Field(None, max_length=255)
     notes: Optional[str] = None
     reference_number: Optional[str] = None
     payment_method: str = "CASH"
     contact_id: Optional[str] = None
     tags: Optional[List[str]] = None
     status: str = "COMPLETED"
+
+    @field_validator("category_id", "subcategory_id", "contact_id", "time", "notes", "reference_number", mode="before")
+    @classmethod
+    def empty_str_to_none(cls, v: Any) -> Any:
+        if isinstance(v, str) and not v.strip():
+            return None
+        return v
 
     @field_validator("amount")
     @classmethod
@@ -321,6 +332,14 @@ class TransactionUpdate(BaseModel):
     contact_id: Optional[str] = None
     tags: Optional[List[str]] = None
     status: Optional[str] = None
+
+    @field_validator("account_id", "category_id", "subcategory_id", "contact_id", "notes", "reference_number", mode="before")
+    @classmethod
+    def empty_str_to_none_update(cls, v: Any) -> Any:
+        if isinstance(v, str) and not v.strip():
+            return None
+        return v
+
 
 
 class TransactionResponse(BaseModel):
@@ -470,6 +489,14 @@ class InvestmentCreate(BaseModel):
     maturity_date: Optional[date] = None
     notes: Optional[str] = None
 
+    @field_validator("account_id", "institution", "notes", mode="before")
+    @classmethod
+    def empty_str_to_none(cls, v: Any) -> Any:
+        if isinstance(v, str) and not v.strip():
+            return None
+        return v
+
+
 
 class InvestmentUpdate(BaseModel):
     name: Optional[str] = None
@@ -544,6 +571,15 @@ class BudgetCreate(BaseModel):
     categories: List[BudgetCategoryCreate]
 
 
+class BudgetUpdate(BaseModel):
+    name: Optional[str] = None
+    period: Optional[str] = None
+    start_date: Optional[date] = None
+    end_date: Optional[date] = None
+    is_active: Optional[bool] = None
+
+
+
 class BudgetCategoryStatus(BaseModel):
     id: str
     category_id: str
@@ -587,6 +623,26 @@ class LoanCreate(BaseModel):
     start_date: date
     account_id: Optional[str] = None
     notes: Optional[str] = None
+
+    @field_validator("account_id", "institution", "notes", mode="before")
+    @classmethod
+    def empty_str_to_none(cls, v: Any) -> Any:
+        if isinstance(v, str) and not v.strip():
+            return None
+        return v
+
+
+
+class LoanUpdate(BaseModel):
+    name: Optional[str] = None
+    type: Optional[str] = None
+    institution: Optional[str] = None
+    interest_rate: Optional[Decimal] = None
+    tenure_months: Optional[int] = None
+    emi_amount: Optional[Decimal] = None
+    notes: Optional[str] = None
+    status: Optional[str] = None
+
 
 
 class LoanResponse(BaseModel):
@@ -651,6 +707,15 @@ class InvoiceCreate(BaseModel):
     currency_code: str = "INR"
     notes: Optional[str] = None
     terms: Optional[str] = None
+
+
+class InvoiceUpdate(BaseModel):
+    customer_id: Optional[str] = None
+    due_date: Optional[date] = None
+    status: Optional[str] = None
+    notes: Optional[str] = None
+    terms: Optional[str] = None
+
 
 
 class InvoiceItemResponse(BaseModel):
@@ -754,6 +819,26 @@ class SubscriptionCreate(BaseModel):
     reminder_days: int = Field(default=3, ge=0, le=30)
     notes: Optional[str] = None
 
+    @field_validator("account_id", "category_id", "notes", mode="before")
+    @classmethod
+    def empty_str_to_none(cls, v: Any) -> Any:
+        if isinstance(v, str) and not v.strip():
+            return None
+        return v
+
+
+
+class SubscriptionUpdate(BaseModel):
+    name: Optional[str] = None
+    amount: Optional[Decimal] = None
+    currency_code: Optional[str] = None
+    billing_cycle: Optional[str] = None
+    next_billing_date: Optional[date] = None
+    status: Optional[str] = None
+    reminder_days: Optional[int] = None
+    notes: Optional[str] = None
+
+
 
 class SubscriptionResponse(BaseModel):
     id: str
@@ -790,3 +875,56 @@ class NotificationResponse(BaseModel):
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+# ─── Wishlist Schemas ─────────────────────────────────────────────────────────
+class WishlistItemCreate(BaseModel):
+    name: str = Field(..., min_length=1, max_length=255)
+    quantity: Decimal = Field(default=Decimal("1.00"), gt=0)
+    unit: str = "pcs"
+    price: Optional[Decimal] = None
+    notes: Optional[str] = None
+
+    @field_validator("unit", "notes", mode="before")
+    @classmethod
+    def empty_str_to_none(cls, v: Any) -> Any:
+        if isinstance(v, str) and not v.strip():
+            return None
+        return v
+
+
+class WishlistItemUpdate(BaseModel):
+    name: Optional[str] = None
+    quantity: Optional[Decimal] = None
+    unit: Optional[str] = None
+    price: Optional[Decimal] = None
+    is_purchased: Optional[bool] = None
+    notes: Optional[str] = None
+
+
+class WishlistItemResponse(BaseModel):
+    id: str
+    workspace_id: str
+    name: str
+    quantity: Decimal
+    unit: str
+    price: Optional[Decimal] = None
+    is_purchased: bool
+    notes: Optional[str] = None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class WishlistPurchaseRequest(BaseModel):
+    account_id: str
+    category_id: Optional[str] = "cat-exp-02"
+    price: Optional[Decimal] = None
+    record_expense: bool = True
+
+
+class WishlistAdvanceRequest(BaseModel):
+    account_id: str
+    category_id: Optional[str] = "cat-inc-08"
+    amount: Decimal = Field(..., gt=0)
+    notes: Optional[str] = None

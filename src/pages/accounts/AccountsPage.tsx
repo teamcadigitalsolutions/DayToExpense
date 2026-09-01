@@ -238,18 +238,16 @@ export default function AccountsPage() {
                 </div>
               </div>
 
-              {!editingAccount && (
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Opening Balance (₹)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={form.opening_balance}
-                    onChange={(e) => setForm((f) => ({ ...f, opening_balance: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                  />
-                </div>
-              )}
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Opening Balance (₹)</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={form.opening_balance}
+                  onChange={(e) => setForm((f) => ({ ...f, opening_balance: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                />
+              </div>
 
               <div className="flex items-center gap-3">
                 <label className="text-xs font-medium text-gray-700">Account Color:</label>

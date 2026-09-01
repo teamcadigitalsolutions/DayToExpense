@@ -270,6 +270,8 @@ export const loanService = {
     api.post(`/workspaces/${workspaceId}/loans`, data).then(r => getPayload(r, null)),
   update: (workspaceId: string, id: string, data: object) =>
     api.put(`/workspaces/${workspaceId}/loans/${id}`, data).then(r => getPayload(r, null)),
+  delete: (workspaceId: string, id: string) =>
+    api.delete(`/workspaces/${workspaceId}/loans/${id}`),
   addPayment: (workspaceId: string, loanId: string, data: object) =>
     api.post(`/workspaces/${workspaceId}/loans/${loanId}/payments`, data).then(r => getPayload(r, null)),
   getPayments: (workspaceId: string, loanId: string) =>
@@ -333,18 +335,25 @@ export const subscriptionService = {
 
 // ─── Report Service ────────────────────────────────────────────────────────────
 export const reportService = {
-  income: (workspaceId: string, params: { format?: string; period?: string; start_date?: string; end_date?: string }) =>
-    api.get(`/workspaces/${workspaceId}/reports/income`, { params }),
-  expense: (workspaceId: string, params: { format?: string; period?: string }) =>
-    api.get(`/workspaces/${workspaceId}/reports/expense`, { params }),
+  income: (workspaceId: string, params: { format?: string; period?: string; start_date?: string; end_date?: string }) => {
+    const ws = getWsId(workspaceId);
+    return api.get(`/workspaces/${ws}/reports/income`, { params });
+  },
+  expense: (workspaceId: string, params: { format?: string; period?: string; start_date?: string; end_date?: string }) => {
+    const ws = getWsId(workspaceId);
+    return api.get(`/workspaces/${ws}/reports/expense`, { params });
+  },
   downloadCSV: async (workspaceId: string, type: 'income' | 'expense', period: string) => {
-    const res: any = await api.get(`/workspaces/${workspaceId}/reports/${type}`, {
+    const ws = getWsId(workspaceId);
+    const res: any = await api.get(`/workspaces/${ws}/reports/${type}`, {
       params: { format: 'csv', period },
       responseType: 'blob',
     });
     const url = URL.createObjectURL(new Blob([res.data ?? res]));
     const a = document.createElement('a');
-    a.href = url; a.download = `${type}_report.csv`; a.click();
+    a.href = url;
+    a.download = `${type}_report.csv`;
+    a.click();
     URL.revokeObjectURL(url);
   },
 };
@@ -366,5 +375,40 @@ export const settingsService = {
   save: (workspaceId: string, key: string, value: any): Promise<any> => {
     const ws = getWsId(workspaceId);
     return api.post(`/workspaces/${ws}/settings/${key}`, value).then(r => getPayload(r, null));
+  },
+  truncateWorkspace: (workspaceId: string): Promise<any> => {
+    const ws = getWsId(workspaceId);
+    return api.post(`/workspaces/${ws}/settings-action/truncate`).then(r => getPayload(r, null));
+  },
+  factoryReset: (workspaceId: string): Promise<any> => {
+    const ws = getWsId(workspaceId);
+    return api.post(`/workspaces/${ws}/settings-action/factory-reset`).then(r => getPayload(r, null));
+  },
+};
+
+export const wishlistService = {
+  list: (workspaceId: string): Promise<any> => {
+    const ws = getWsId(workspaceId);
+    return api.get(`/workspaces/${ws}/wishlist`).then(r => getPayload(r, []));
+  },
+  create: (workspaceId: string, data: any): Promise<any> => {
+    const ws = getWsId(workspaceId);
+    return api.post(`/workspaces/${ws}/wishlist`, data).then(r => getPayload(r, null));
+  },
+  update: (workspaceId: string, id: string, data: any): Promise<any> => {
+    const ws = getWsId(workspaceId);
+    return api.put(`/workspaces/${ws}/wishlist/${id}`, data).then(r => getPayload(r, null));
+  },
+  delete: (workspaceId: string, id: string): Promise<any> => {
+    const ws = getWsId(workspaceId);
+    return api.delete(`/workspaces/${ws}/wishlist/${id}`).then(r => getPayload(r, null));
+  },
+  purchase: (workspaceId: string, id: string, data: { account_id: string; category_id?: string; price?: number; record_expense: boolean }): Promise<any> => {
+    const ws = getWsId(workspaceId);
+    return api.post(`/workspaces/${ws}/wishlist/${id}/purchase`, data).then(r => getPayload(r, null));
+  },
+  recordAdvance: (workspaceId: string, id: string, data: { account_id: string; category_id?: string; amount: number; notes?: string }): Promise<any> => {
+    const ws = getWsId(workspaceId);
+    return api.post(`/workspaces/${ws}/wishlist/${id}/advance`, data).then(r => getPayload(r, null));
   },
 };

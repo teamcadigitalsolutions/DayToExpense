@@ -17,10 +17,11 @@ def safe_decimal(value: Union[str, int, float, Decimal, None], default: Decimal 
         return default
 
 
-def round_money(value: Decimal, places: int = 2) -> Decimal:
+def round_money(value: Union[str, int, float, Decimal, None], places: int = 2) -> Decimal:
     """Round Decimal to specified decimal places using ROUND_HALF_UP."""
+    dec_val = safe_decimal(value)
     quantize_str = "0." + "0" * places
-    return value.quantize(Decimal(quantize_str), rounding=ROUND_HALF_UP)
+    return dec_val.quantize(Decimal(quantize_str), rounding=ROUND_HALF_UP)
 
 
 def format_inr(amount: Decimal) -> str:

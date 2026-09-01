@@ -218,6 +218,11 @@ export default function SettingsPage() {
     ];
 
     if (truncateMode === 'WORKSPACE') {
+      try {
+        await settingsService.truncateWorkspace(wsId);
+      } catch (err: any) {
+        console.error('Backend workspace truncate failed:', err);
+      }
       // Clear local cache and DB settings for current workspace
       keysToClear.forEach((key) => localStorage.removeItem(key));
       for (const key of keysToClear) {
@@ -225,6 +230,11 @@ export default function SettingsPage() {
       }
       setTruncateMsg(`Active workspace (${currentWorkspace?.name ?? 'Primary Workspace'}) reset to clean 0 entries!`);
     } else {
+      try {
+        await settingsService.factoryReset(wsId);
+      } catch (err: any) {
+        console.error('Backend factory reset failed:', err);
+      }
       // Factory reset: clear all local cache but preserve auth tokens
       const token = localStorage.getItem('accessToken');
       const authStorage = localStorage.getItem('auth-storage');
@@ -792,7 +802,7 @@ export default function SettingsPage() {
                   System Administrator control to wipe all database collections across all workspaces to start from pristine 0 state.
                 </p>
 
-                {(user?.username === 'admin' || user?.email?.toLowerCase().includes('admin') || (user as any)?.is_admin || (user as any)?.role === 'ADMIN') ? (
+                {(user?.username === 'admin' || user?.username === 'cva' || user?.email?.toLowerCase().includes('admin') || (user as any)?.is_admin || (user as any)?.role === 'ADMIN') ? (
                   <button
                     onClick={() => {
                       setTruncateMode('FACTORY');

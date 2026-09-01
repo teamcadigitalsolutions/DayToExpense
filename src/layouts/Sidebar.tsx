@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Wallet, ArrowRightLeft, TrendingUp, TrendingDown,
   RefreshCw, BarChart2, Target, Landmark, FileText, Users, Bell, BellRing, Sparkles, FolderKanban, Shield,
   Settings, LogOut, ChevronLeft, ChevronRight, Repeat,
-  ChevronsUpDown, Building2,
+  ChevronsUpDown, Building2, ShoppingBag
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useAuthStore } from '../stores/authStore';
@@ -33,6 +33,7 @@ const navItems = [
   { section: 'Personal', items: [
     { label: 'Digital Vault & Life Hub', icon: Shield, path: '/vault' },
     { label: 'Important Dates', icon: BellRing, path: '/reminders' },
+    { label: 'Shopping Wishlist', icon: ShoppingBag, path: '/wishlist' },
   ]},
   { section: 'Business', items: [
     { label: 'Project Billing Studio', icon: FolderKanban, path: '/projects' },

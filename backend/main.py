@@ -36,6 +36,7 @@ from backend.api.v1.reports import router as report_router
 from backend.api.v1.notifications import router as notification_router
 from backend.api.v1.migration import router as migration_router
 from backend.api.v1.settings import router as settings_router
+from backend.api.v1.wishlist import router as wishlist_router
 
 
 # Rate limiter
@@ -122,6 +123,7 @@ app.include_router(report_router, prefix=f"{PREFIX}/workspaces", tags=["Reports"
 app.include_router(notification_router, prefix=f"{PREFIX}/notifications", tags=["Notifications"])
 app.include_router(migration_router, prefix=f"{PREFIX}/migration", tags=["Migration"])
 app.include_router(settings_router, prefix=f"{PREFIX}/workspaces", tags=["Settings"])
+app.include_router(wishlist_router, prefix=f"{PREFIX}/workspaces", tags=["Wishlist"])
 
 
 # ─── Health Check ─────────────────────────────────────────────────────────────

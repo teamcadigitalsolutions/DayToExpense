@@ -1,11 +1,19 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Search, X } from 'lucide-react';
+import { Plus, Search, X, Pencil, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
 import { transactionService, accountService, categoryService } from '../../services';
 import { useAuthStore } from '../../stores/authStore';
 import { useCurrency, useDebounce } from '../../hooks';
 import AmountCalculatorInput from '../../components/AmountCalculatorInput';
 import { autoSuggestCategory } from '../../utils/autoCategorize';
+
+const EMPTY_FORM = {
+  account_id: '',
+  category_id: '',
+  amount: '',
+  date: new Date().toISOString().split('T')[0],
+  description: '',
+};
 
 export default function ExpensesPage() {
   const { currentWorkspace } = useAuthStore();
@@ -16,17 +24,14 @@ export default function ExpensesPage() {
   const qc = useQueryClient();
 
   const [isOpen, setIsOpen] = useState(false);
-  const [form, setForm] = useState({
-    account_id: '',
-    category_id: '',
-    amount: '',
-    date: new Date().toISOString().split('T')[0],
-    description: '',
-  });
+  const [editingTx, setEditingTx] = useState<any>(null);
+  const [form, setForm] = useState({ ...EMPTY_FORM });
+  const [sortDir, setSortDir] = useState<'desc' | 'asc'>('desc');
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ['expense', wsId, debouncedSearch],
-    queryFn: () => transactionService.list(wsId, { type: 'EXPENSE', search: debouncedSearch || undefined }),
+    queryFn: () => transactionService.list(wsId, { type: 'EXPENSE', search: debouncedSearch || undefined, size: 200 }),
     enabled: !!wsId,
   });
 
@@ -42,41 +47,74 @@ export default function ExpensesPage() {
     enabled: !!wsId,
   });
 
-  const transactions = data?.items ?? [];
-  const total = transactions.reduce((sum: number, t: any) => sum + Number(t.amount), 0);
+  const rawTransactions = data?.items ?? [];
+  const transactions = [...rawTransactions].sort((a: any, b: any) => {
+    const da = new Date(a.date).getTime();
+    const db_ = new Date(b.date).getTime();
+    return sortDir === 'desc' ? db_ - da : da - db_;
+  });
+  const total = rawTransactions.reduce((sum: number, t: any) => sum + Number(t.amount), 0);
+
+  const invalidate = () => {
+    qc.invalidateQueries({ queryKey: ['expense', wsId] });
+    qc.invalidateQueries({ queryKey: ['transactions', wsId] });
+    qc.invalidateQueries({ queryKey: ['accounts', wsId] });
+    qc.invalidateQueries({ queryKey: ['dashboard', wsId] });
+  };
+
+  const closeModal = () => {
+    setIsOpen(false);
+    setEditingTx(null);
+    setForm({ ...EMPTY_FORM });
+  };
 
   const createMutation = useMutation({
+    onSuccess: () => { invalidate(); closeModal(); },
     mutationFn: (newExpense: any) =>
       transactionService.create(wsId, {
         ...newExpense,
         type: 'EXPENSE',
         amount: parseFloat(newExpense.amount),
       }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['expense', wsId] });
-      qc.invalidateQueries({ queryKey: ['transactions', wsId] });
-      qc.invalidateQueries({ queryKey: ['accounts', wsId] });
-      qc.invalidateQueries({ queryKey: ['dashboard', wsId] });
-      setIsOpen(false);
-      setForm({
-        account_id: '',
-        category_id: '',
-        amount: '',
-        date: new Date().toISOString().split('T')[0],
-        description: '',
-      });
-    },
+  });
+
+  const updateMutation = useMutation({
+    onSuccess: () => { invalidate(); closeModal(); },
+    mutationFn: ({ id, d }: { id: string; d: any }) =>
+      transactionService.update(wsId, id, { ...d, amount: parseFloat(d.amount) }),
+  });
+
+  const deleteMutation = useMutation({
+    onSuccess: () => { invalidate(); setDeleteConfirm(null); },
+    mutationFn: (id: string) => transactionService.delete(wsId, id),
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const accId = form.account_id || accounts[0]?.id;
     if (!accId || !form.amount || !form.date) return;
-    createMutation.mutate({
-      ...form,
-      account_id: accId,
-    });
+    const payload = { ...form, account_id: accId };
+    if (editingTx) {
+      updateMutation.mutate({ id: editingTx.id, d: payload });
+    } else {
+      createMutation.mutate(payload);
+    }
   };
+
+  const openEdit = (tx: any) => {
+    setEditingTx(tx);
+    setForm({
+      account_id: tx.account_id || '',
+      category_id: tx.category_id || '',
+      amount: String(tx.amount),
+      date: tx.date ? String(tx.date).split('T')[0] : new Date().toISOString().split('T')[0],
+      description: tx.description || '',
+    });
+    setIsOpen(true);
+  };
+
+  const isPending = createMutation.isPending || updateMutation.isPending;
+
 
   return (
     <div className="space-y-4">
@@ -96,7 +134,7 @@ export default function ExpensesPage() {
             />
           </div>
           <button
-            onClick={() => setIsOpen(true)}
+            onClick={() => { setEditingTx(null); setForm({ ...EMPTY_FORM }); setIsOpen(true); }}
             className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 shadow-sm"
           >
             <Plus size={16} /> Add Expense
@@ -108,31 +146,42 @@ export default function ExpensesPage() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-gray-200 bg-gray-50">
-              <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Date</th>
+              <th
+                className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase cursor-pointer select-none"
+                onClick={() => setSortDir(d => d === 'desc' ? 'asc' : 'desc')}
+              >
+                <span className="flex items-center gap-1">
+                  Date {sortDir === 'desc' ? <ChevronDown size={12} /> : <ChevronUp size={12} />}
+                </span>
+              </th>
               <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Description</th>
               <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Category</th>
+              <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Account</th>
               <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Amount</th>
+              <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
             {isLoading ? (
               [...Array(8)].map((_, i) => (
                 <tr key={i}>
-                  <td colSpan={4} className="px-4 py-3">
+                  <td colSpan={6} className="px-4 py-3">
                     <div className="h-4 bg-gray-100 rounded animate-pulse" />
                   </td>
                 </tr>
               ))
             ) : transactions.length === 0 ? (
               <tr>
-                <td colSpan={4} className="px-4 py-12 text-center text-gray-400">
+                <td colSpan={6} className="px-4 py-12 text-center text-gray-400">
                   No expense records found
                 </td>
               </tr>
             ) : (
               transactions.map((tx: any) => (
                 <tr key={tx.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 text-gray-500 font-mono">{new Date(tx.date).toLocaleDateString('en-IN')}</td>
+                  <td className="px-4 py-3 text-gray-500 font-mono text-xs whitespace-nowrap">
+                    {new Date(tx.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                  </td>
                   <td className="px-4 py-3 font-medium text-gray-900">{tx.description || tx.category_name || 'Expense'}</td>
                   <td className="px-4 py-3">
                     {tx.category_name && (
@@ -141,7 +190,26 @@ export default function ExpensesPage() {
                       </span>
                     )}
                   </td>
+                  <td className="px-4 py-3 text-xs text-gray-500">{tx.account_name || '—'}</td>
                   <td className="px-4 py-3 text-right font-semibold text-red-600">{formatAmount(tx.amount)}</td>
+                  <td className="px-4 py-3 text-center">
+                    <div className="flex items-center justify-center gap-2">
+                      <button
+                        onClick={() => openEdit(tx)}
+                        className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                        title="Edit"
+                      >
+                        <Pencil size={14} />
+                      </button>
+                      <button
+                        onClick={() => setDeleteConfirm(tx.id)}
+                        className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        title="Delete"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </td>
                 </tr>
               ))
             )}
@@ -149,13 +217,33 @@ export default function ExpensesPage() {
         </table>
       </div>
 
-      {/* Add Expense Modal */}
+      {/* Delete Confirmation */}
+      {deleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-sm p-6 space-y-4">
+            <h3 className="font-semibold text-gray-900">Delete Expense Entry?</h3>
+            <p className="text-sm text-gray-500">This action cannot be undone.</p>
+            <div className="flex justify-end gap-2">
+              <button onClick={() => setDeleteConfirm(null)} className="px-4 py-2 text-sm text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium">Cancel</button>
+              <button
+                onClick={() => deleteMutation.mutate(deleteConfirm!)}
+                disabled={deleteMutation.isPending}
+                className="px-4 py-2 text-sm text-white bg-red-600 hover:bg-red-700 rounded-lg font-medium disabled:opacity-50"
+              >
+                {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add / Edit Modal */}
       {isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-              <h3 className="font-semibold text-gray-900">Add Expense Entry</h3>
-              <button onClick={() => setIsOpen(false)} className="text-gray-400 hover:text-gray-600">
+              <h3 className="font-semibold text-gray-900">{editingTx ? 'Edit Expense Entry' : 'Add Expense Entry'}</h3>
+              <button onClick={closeModal} className="text-gray-400 hover:text-gray-600">
                 <X size={18} />
               </button>
             </div>
@@ -244,17 +332,17 @@ export default function ExpensesPage() {
               <div className="flex justify-end gap-2 pt-2">
                 <button
                   type="button"
-                  onClick={() => setIsOpen(false)}
+                  onClick={closeModal}
                   className="px-4 py-2 text-sm text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  disabled={createMutation.isPending}
+                  disabled={isPending}
                   className="px-4 py-2 text-sm text-white bg-blue-600 hover:bg-blue-700 rounded-lg font-medium disabled:opacity-50"
                 >
-                  {createMutation.isPending ? 'Saving...' : 'Save Expense'}
+                  {isPending ? 'Saving...' : editingTx ? 'Update Expense' : 'Save Expense'}
                 </button>
               </div>
             </form>
@@ -264,3 +352,4 @@ export default function ExpensesPage() {
     </div>
   );
 }
+

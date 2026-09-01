@@ -30,6 +30,7 @@ const ProjectStudioPage = lazy(() => import('./pages/projects/ProjectStudioPage'
 const SmartHubPage = lazy(() => import('./pages/hub/SmartHubPage'));
 const ReportsPage = lazy(() => import('./pages/reports/ReportsPage'));
 const SettingsPage = lazy(() => import('./pages/settings/SettingsPage'));
+const WishlistPage = lazy(() => import('./pages/wishlist/WishlistPage'));
 
 function PageLoader() {
   return (
@@ -74,6 +75,7 @@ export default function App() {
                 <Route path="/hub" element={<Suspense fallback={<PageLoader />}><SmartHubPage /></Suspense>} />
                 <Route path="/reports" element={<Suspense fallback={<PageLoader />}><ReportsPage /></Suspense>} />
                 <Route path="/settings" element={<Suspense fallback={<PageLoader />}><SettingsPage /></Suspense>} />
+                <Route path="/wishlist" element={<Suspense fallback={<PageLoader />}><WishlistPage /></Suspense>} />
               </Route>
             </Route>
 

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  Users, DollarSign, Calendar, Plus, Search, Edit2, Trash2, Landmark, CheckCircle, FileText, X, ChevronDown, UserCheck
+  Users, DollarSign, Calendar, Plus, Search, Edit2, Trash2, Landmark, CheckCircle, FileText, X, ChevronDown, UserCheck, Pencil
 } from 'lucide-react';
 import { contactService, loanService, transactionService, accountService, settingsService } from '../../services';
 import { useAuthStore } from '../../stores/authStore';
@@ -13,6 +13,29 @@ const MONTHS = [
 ];
 
 const YEARS = ['2026', '2025', '2024', '2023'];
+
+const EMPTY_EMP_FORM = {
+  id: '',
+  name: '',
+  designation: '',
+  department: '',
+  company: '',
+  email: '',
+  phone: '',
+  base_salary: '',
+  allowances: '',
+  deductions: '',
+};
+
+const EMPTY_LOAN_FORM = {
+  id: '',
+  employee_name: '',
+  amount: '',
+  emi: '',
+  outstanding_balance: '',
+  status: 'ACTIVE',
+  notes: '',
+};
 
 export default function PayrollPage() {
   const { currentWorkspace } = useAuthStore();
@@ -31,27 +54,15 @@ export default function PayrollPage() {
   const [isLoanModalOpen, setIsLoanModalOpen] = useState(false);
   const [isDisburseModalOpen, setIsDisburseModalOpen] = useState(false);
 
+  const [editingEmployee, setEditingEmployee] = useState<any>(null);
+  const [editingLoan, setEditingLoan] = useState<any>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ type: 'employee' | 'loan' | 'payslip'; id: string } | null>(null);
+
   // Employee Form State
-  const [empForm, setEmpForm] = useState({
-    id: '',
-    name: '',
-    designation: '',
-    department: '',
-    company: '',
-    email: '',
-    phone: '',
-    base_salary: '',
-    allowances: '',
-    deductions: '',
-  });
+  const [empForm, setEmpForm] = useState({ ...EMPTY_EMP_FORM });
 
   // Loan Form State
-  const [loanForm, setLoanForm] = useState({
-    employee_name: '',
-    amount: '',
-    emi: '',
-    notes: '',
-  });
+  const [loanForm, setLoanForm] = useState({ ...EMPTY_LOAN_FORM });
 
   // Fetch Employees (Contacts with type='EMPLOYEE')
   const { data: employeeContacts = [], isLoading: isEmpLoading } = useQuery({
@@ -101,44 +112,75 @@ export default function PayrollPage() {
     }
   }, [disbursements, wsId]);
 
-  // Employee Save Mutation
+  // Employee Save/Update Mutation
   const saveEmployeeMutation = useMutation({
-    mutationFn: (data: any) => contactService.create(wsId, { ...data, type: 'EMPLOYEE' }),
+    mutationFn: (data: any) => {
+      const payload = {
+        name: data.name,
+        company: data.designation || data.company,
+        email: data.email || undefined,
+        phone: data.phone || undefined,
+        notes: `Base: ${data.base_salary || '0'}, Allowances: ${data.allowances || '0'}, Deductions: ${data.deductions || '0'}`,
+      };
+      if (data.id) {
+        return contactService.update(wsId, data.id, payload);
+      }
+      return contactService.create(wsId, { ...payload, type: 'EMPLOYEE' });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['contacts', wsId] });
       setIsEmployeeModalOpen(false);
-      setEmpForm({
-        id: '',
-        name: '',
-        designation: '',
-        department: '',
-        company: '',
-        email: '',
-        phone: '',
-        base_salary: '',
-        allowances: '',
-        deductions: '',
-      });
+      setEditingEmployee(null);
+      setEmpForm({ ...EMPTY_EMP_FORM });
     },
   });
 
-  // Employee Loan Save Mutation
+  // Employee Delete Mutation
+  const deleteEmployeeMutation = useMutation({
+    mutationFn: (id: string) => contactService.delete(wsId, id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['contacts', wsId] });
+      setDeleteConfirm(null);
+    },
+  });
+
+  // Employee Loan Save/Update Mutation
   const saveLoanMutation = useMutation({
-    mutationFn: (data: any) =>
-      loanService.create(wsId, {
-        name: `Employee Loan - ${data.employee_name}`,
-        type: 'EMPLOYEE',
-        institution: 'Internal HR',
+    mutationFn: (data: any) => {
+      const payload = {
+        name: data.id ? data.name : `Employee Loan - ${data.employee_name}`,
         principal: parseFloat(data.amount),
         emi_amount: parseFloat(data.emi || String(parseFloat(data.amount) / 10)),
+        outstanding_balance: parseFloat(data.outstanding_balance || data.amount),
+        status: data.status || 'ACTIVE',
+        notes: data.notes || undefined,
+      };
+      if (data.id) {
+        return loanService.update(wsId, data.id, payload);
+      }
+      return loanService.create(wsId, {
+        ...payload,
+        type: 'EMPLOYEE',
+        institution: 'Internal HR',
         interest_rate: 0,
         tenure_months: 10,
         start_date: new Date().toISOString().split('T')[0],
-      }),
+      });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['loans', wsId] });
       setIsLoanModalOpen(false);
-      setLoanForm({ employee_name: '', amount: '', emi: '', notes: '' });
+      setEditingLoan(null);
+      setLoanForm({ ...EMPTY_LOAN_FORM });
+    },
+  });
+
+  // Loan Delete Mutation
+  const deleteLoanMutation = useMutation({
+    mutationFn: (id: string) => loanService.delete(wsId, id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['loans', wsId] });
+      setDeleteConfirm(null);
     },
   });
 
@@ -156,8 +198,19 @@ export default function PayrollPage() {
   const handleDisburseAll = (accountId: string) => {
     if (!accountId) return;
     const newEntries = employeeContacts.map((emp: any) => {
-      const base = 50000;
-      const net = base + 3000 - 1500;
+      // Parse custom notes if salary info is saved there
+      let base = 50000;
+      let allowance = 3000;
+      let deds = 1500;
+      if (emp.notes) {
+        const baseMatch = emp.notes.match(/Base:\s*(\d+)/);
+        const allowMatch = emp.notes.match(/Allowances:\s*(\d+)/);
+        const dedsMatch = emp.notes.match(/Deductions:\s*(\d+)/);
+        if (baseMatch) base = parseInt(baseMatch[1]);
+        if (allowMatch) allowance = parseInt(allowMatch[1]);
+        if (dedsMatch) deds = parseInt(dedsMatch[1]);
+      }
+      const net = base + allowance - deds;
       return {
         id: 'pay-' + Date.now() + '-' + Math.random().toString().slice(2, 6),
         employee_name: emp.name,
@@ -167,8 +220,8 @@ export default function PayrollPage() {
         month: selectedMonth,
         disbursed_date: new Date().toISOString().split('T')[0],
         base_salary: base,
-        allowance: 3000,
-        deductions: 1500,
+        allowance: allowance,
+        deductions: deds,
         net_salary: net,
         status: 'PAID',
       };
@@ -177,6 +230,76 @@ export default function PayrollPage() {
     setDisbursements((prev) => [...prev, ...newEntries]);
     setIsDisburseModalOpen(false);
   };
+
+  const openEditEmployee = (emp: any) => {
+    setEditingEmployee(emp);
+    let base = '', allowances = '', deductions = '';
+    if (emp.notes) {
+      const baseMatch = emp.notes.match(/Base:\s*(\d+)/);
+      const allowMatch = emp.notes.match(/Allowances:\s*(\d+)/);
+      const dedsMatch = emp.notes.match(/Deductions:\s*(\d+)/);
+      if (baseMatch) base = baseMatch[1];
+      if (allowMatch) allowances = allowMatch[1];
+      if (dedsMatch) deductions = dedsMatch[1];
+    }
+    setEmpForm({
+      id: emp.id,
+      name: emp.name || '',
+      designation: emp.company || '',
+      department: 'General',
+      company: emp.company || '',
+      email: emp.email || '',
+      phone: emp.phone || '',
+      base_salary: base,
+      allowances: allowances,
+      deductions: deductions,
+    });
+    setIsEmployeeModalOpen(true);
+  };
+
+  const openAddEmployee = () => {
+    setEditingEmployee(null);
+    setEmpForm({ ...EMPTY_EMP_FORM });
+    setIsEmployeeModalOpen(true);
+  };
+
+  const openEditLoan = (loan: any) => {
+    setEditingLoan(loan);
+    setLoanForm({
+      id: loan.id,
+      employee_name: loan.name.replace('Employee Loan - ', ''),
+      amount: String(loan.principal || 0),
+      emi: String(loan.emi_amount || 0),
+      outstanding_balance: String(loan.outstanding_balance || 0),
+      status: loan.status || 'ACTIVE',
+      notes: loan.notes || '',
+    });
+    setIsLoanModalOpen(true);
+  };
+
+  const openAddLoan = () => {
+    setEditingLoan(null);
+    setLoanForm({ ...EMPTY_LOAN_FORM });
+    setIsLoanModalOpen(true);
+  };
+
+  const handleDeletePayslip = (payslipId: string) => {
+    setDisbursements((prev) => prev.filter((p) => p.id !== payslipId));
+  };
+
+  const handleConfirmDelete = () => {
+    if (!deleteConfirm) return;
+    if (deleteConfirm.type === 'employee') {
+      deleteEmployeeMutation.mutate(deleteConfirm.id);
+    } else if (deleteConfirm.type === 'loan') {
+      deleteLoanMutation.mutate(deleteConfirm.id);
+    } else if (deleteConfirm.type === 'payslip') {
+      handleDeletePayslip(deleteConfirm.id);
+      setDeleteConfirm(null);
+    }
+  };
+
+  const isPending = saveEmployeeMutation.isPending || saveLoanMutation.isPending;
 
   return (
     <div className="space-y-6">
@@ -191,13 +314,13 @@ export default function PayrollPage() {
 
         <div className="flex items-center gap-2">
           <button
-            onClick={() => setIsEmployeeModalOpen(true)}
+            onClick={openAddEmployee}
             className="flex items-center gap-2 px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg shadow-sm"
           >
             <Plus size={15} /> Add Employee
           </button>
           <button
-            onClick={() => setIsLoanModalOpen(true)}
+            onClick={openAddLoan}
             className="flex items-center gap-2 px-3.5 py-2 bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold rounded-lg shadow-sm"
           >
             <Landmark size={15} /> Grant Employee Loan
@@ -329,12 +452,13 @@ export default function PayrollPage() {
                 <th className="text-right px-4 py-3 font-semibold uppercase">Deductions</th>
                 <th className="text-right px-4 py-3 font-semibold uppercase">Net Disbursed</th>
                 <th className="text-center px-4 py-3 font-semibold uppercase">Status</th>
+                <th className="text-center px-4 py-3 font-semibold uppercase">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {filteredDisbursements.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-12 text-center text-gray-400">
+                  <td colSpan={9} className="px-4 py-12 text-center text-gray-400">
                     No payroll disbursements logged for {selectedMonth} {selectedYear}. Click "Disburse Payroll" to process salaries.
                   </td>
                 </tr>
@@ -352,6 +476,15 @@ export default function PayrollPage() {
                       <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-green-100 text-green-700">
                         {pay.status}
                       </span>
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      <button
+                        onClick={() => setDeleteConfirm({ type: 'payslip', id: pay.id })}
+                        className="p-1 text-gray-400 hover:text-red-600 rounded transition-colors"
+                        title="Delete Payslip Entry"
+                      >
+                        <Trash2 size={14} />
+                      </button>
                     </td>
                   </tr>
                 ))
@@ -371,25 +504,50 @@ export default function PayrollPage() {
               <p className="text-xs text-gray-400 mb-4">Click "Add Employee" above to maintain your team's HR records.</p>
             </div>
           ) : (
-            employeeContacts.map((emp: any) => (
-              <div key={emp.id} className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm hover:shadow transition-shadow">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-700 font-bold flex items-center justify-center text-base">
-                    {emp.name.charAt(0).toUpperCase()}
+            employeeContacts.map((emp: any) => {
+              // Parse notes if salary details are there
+              let base = '50,000';
+              if (emp.notes) {
+                const match = emp.notes.match(/Base:\s*(\d+)/);
+                if (match) base = parseInt(match[1]).toLocaleString('en-IN');
+              }
+              return (
+                <div key={emp.id} className="group relative bg-white border border-gray-200 rounded-xl p-5 shadow-sm hover:shadow hover:border-blue-300 transition-all">
+                  <div className="absolute right-4 top-4 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                      onClick={() => openEditEmployee(emp)}
+                      className="p-1 text-gray-400 hover:text-blue-600 rounded transition-colors"
+                      title="Edit Employee"
+                    >
+                      <Edit2 size={13} />
+                    </button>
+                    <button
+                      onClick={() => setDeleteConfirm({ type: 'employee', id: emp.id })}
+                      className="p-1 text-gray-400 hover:text-red-600 rounded transition-colors"
+                      title="Delete Employee"
+                    >
+                      <Trash2 size={13} />
+                    </button>
                   </div>
-                  <div>
-                    <h3 className="font-semibold text-gray-900 text-sm">{emp.name}</h3>
-                    <p className="text-xs text-gray-500">{emp.company || 'Employee'}</p>
-                  </div>
-                </div>
 
-                <div className="space-y-1.5 text-xs text-gray-600 pt-3 border-t border-gray-100">
-                  {emp.email && <p>📧 {emp.email}</p>}
-                  {emp.phone && <p>📞 {emp.phone}</p>}
-                  <p className="font-medium text-gray-800">💰 Est. Salary: ₹50,000 / month</p>
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-700 font-bold flex items-center justify-center text-base">
+                      {emp.name.charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-gray-900 text-sm">{emp.name}</h3>
+                      <p className="text-xs text-gray-500">{emp.company || 'Employee'}</p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5 text-xs text-gray-600 pt-3 border-t border-gray-100">
+                    {emp.email && <p>📧 {emp.email}</p>}
+                    {emp.phone && <p>📞 {emp.phone}</p>}
+                    <p className="font-medium text-gray-800 font-mono">💰 Est. Salary: ₹{base} / mo</p>
+                  </div>
                 </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
       )}
@@ -400,8 +558,8 @@ export default function PayrollPage() {
           <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
             <h3 className="font-semibold text-gray-900 text-sm">Internal Employee Loans & Advances</h3>
             <button
-              onClick={() => setIsLoanModalOpen(true)}
-              className="px-3 py-1.5 bg-purple-600 text-white text-xs font-semibold rounded-lg"
+              onClick={openAddLoan}
+              className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold rounded-lg"
             >
               + Issue Loan
             </button>
@@ -416,12 +574,13 @@ export default function PayrollPage() {
                 <th className="text-right px-4 py-3 font-semibold uppercase">Monthly EMI</th>
                 <th className="text-right px-4 py-3 font-semibold uppercase">Outstanding</th>
                 <th className="text-center px-4 py-3 font-semibold uppercase">Status</th>
+                <th className="text-center px-4 py-3 font-semibold uppercase">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {loans.filter((l: any) => l.type === 'EMPLOYEE' || l.institution === 'Internal HR').length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-12 text-center text-gray-400">
+                  <td colSpan={7} className="px-4 py-12 text-center text-gray-400">
                     No internal employee loans recorded yet.
                   </td>
                 </tr>
@@ -440,6 +599,24 @@ export default function PayrollPage() {
                           {loan.status}
                         </span>
                       </td>
+                      <td className="px-4 py-3 text-center">
+                        <div className="flex items-center justify-center gap-1.5">
+                          <button
+                            onClick={() => openEditLoan(loan)}
+                            className="p-1 text-gray-400 hover:text-blue-600 rounded transition-colors"
+                            title="Edit Loan Details"
+                          >
+                            <Edit2 size={13} />
+                          </button>
+                          <button
+                            onClick={() => setDeleteConfirm({ type: 'loan', id: loan.id })}
+                            className="p-1 text-gray-400 hover:text-red-600 rounded transition-colors"
+                            title="Delete Loan"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+                      </td>
                     </tr>
                   ))
               )}
@@ -448,12 +625,35 @@ export default function PayrollPage() {
         </div>
       )}
 
-      {/* Add Employee Modal */}
+      {/* Delete Confirmation Modal */}
+      {deleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-sm p-6 space-y-4">
+            <h3 className="font-semibold text-gray-900">
+              Delete {deleteConfirm.type === 'employee' ? 'Employee Record' : deleteConfirm.type === 'loan' ? 'Employee Loan' : 'Salary Payslip'}?
+            </h3>
+            <p className="text-sm text-gray-500">
+              This action cannot be undone. Are you sure you want to proceed?
+            </p>
+            <div className="flex justify-end gap-2">
+              <button onClick={() => setDeleteConfirm(null)} className="px-4 py-2 text-sm text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium">Cancel</button>
+              <button
+                onClick={handleConfirmDelete}
+                className="px-4 py-2 text-sm text-white bg-red-600 hover:bg-red-700 rounded-lg font-medium"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add / Edit Employee Modal */}
       {isEmployeeModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-              <h3 className="font-semibold text-gray-900">Add Employee Record</h3>
+              <h3 className="font-semibold text-gray-900">{editingEmployee ? 'Edit Employee Record' : 'Add Employee Record'}</h3>
               <button onClick={() => setIsEmployeeModalOpen(false)} className="text-gray-400 hover:text-gray-600">
                 <X size={18} />
               </button>
@@ -504,7 +704,7 @@ export default function PayrollPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Email</label>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Email Address</label>
                 <input
                   type="email"
                   placeholder="suresh@company.com"
@@ -514,14 +714,16 @@ export default function PayrollPage() {
                 />
               </div>
 
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-3 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1">Base Salary (₹)</label>
                   <input
                     type="number"
+                    required
+                    placeholder="50000"
                     value={empForm.base_salary}
                     onChange={(e) => setEmpForm((f) => ({ ...f, base_salary: e.target.value }))}
-                    className="w-full px-2.5 py-2 border border-gray-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
                   />
                 </div>
 
@@ -529,9 +731,10 @@ export default function PayrollPage() {
                   <label className="block text-xs font-medium text-gray-700 mb-1">Allowances (₹)</label>
                   <input
                     type="number"
+                    placeholder="3000"
                     value={empForm.allowances}
                     onChange={(e) => setEmpForm((f) => ({ ...f, allowances: e.target.value }))}
-                    className="w-full px-2.5 py-2 border border-gray-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
                   />
                 </div>
 
@@ -539,9 +742,10 @@ export default function PayrollPage() {
                   <label className="block text-xs font-medium text-gray-700 mb-1">Deductions (₹)</label>
                   <input
                     type="number"
+                    placeholder="1500"
                     value={empForm.deductions}
                     onChange={(e) => setEmpForm((f) => ({ ...f, deductions: e.target.value }))}
-                    className="w-full px-2.5 py-2 border border-gray-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
                   />
                 </div>
               </div>
@@ -556,10 +760,10 @@ export default function PayrollPage() {
                 </button>
                 <button
                   type="submit"
-                  disabled={saveEmployeeMutation.isPending}
+                  disabled={isPending}
                   className="px-4 py-2 text-sm text-white bg-blue-600 hover:bg-blue-700 rounded-lg font-medium disabled:opacity-50"
                 >
-                  {saveEmployeeMutation.isPending ? 'Saving...' : 'Save Employee'}
+                  {isPending ? 'Saving...' : editingEmployee ? 'Update Record' : 'Save Employee'}
                 </button>
               </div>
             </form>
@@ -567,12 +771,12 @@ export default function PayrollPage() {
         </div>
       )}
 
-      {/* Grant Loan Modal */}
+      {/* Add / Edit Loan Modal */}
       {isLoanModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-              <h3 className="font-semibold text-gray-900">Issue Employee Advance / Loan</h3>
+              <h3 className="font-semibold text-gray-900">{editingLoan ? 'Edit Employee Loan' : 'Issue Employee Loan'}</h3>
               <button onClick={() => setIsLoanModalOpen(false)} className="text-gray-400 hover:text-gray-600">
                 <X size={18} />
               </button>
@@ -587,19 +791,33 @@ export default function PayrollPage() {
             >
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">Employee Name</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Rahul Sharma"
-                  value={loanForm.employee_name}
-                  onChange={(e) => setLoanForm((f) => ({ ...f, employee_name: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none"
-                />
+                {editingLoan ? (
+                  <input
+                    type="text"
+                    readOnly
+                    className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm text-gray-500 focus:outline-none"
+                    value={loanForm.employee_name}
+                  />
+                ) : (
+                  <select
+                    required
+                    value={loanForm.employee_name}
+                    onChange={(e) => setLoanForm((f) => ({ ...f, employee_name: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none"
+                  >
+                    <option value="">Select Employee</option>
+                    {employeeContacts.map((emp: any) => (
+                      <option key={emp.id} value={emp.name}>
+                        {emp.name}
+                      </option>
+                    ))}
+                  </select>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Loan Amount (₹)</label>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Principal Amount (₹)</label>
                   <input
                     type="number"
                     required
@@ -614,12 +832,53 @@ export default function PayrollPage() {
                   <label className="block text-xs font-medium text-gray-700 mb-1">Monthly Salary EMI (₹)</label>
                   <input
                     type="number"
+                    required
                     placeholder="2500"
                     value={loanForm.emi}
                     onChange={(e) => setLoanForm((f) => ({ ...f, emi: e.target.value }))}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none"
                   />
                 </div>
+              </div>
+
+              {editingLoan && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Outstanding Balance (₹)</label>
+                    <input
+                      type="number"
+                      required
+                      placeholder="15000"
+                      value={loanForm.outstanding_balance}
+                      onChange={(e) => setLoanForm((f) => ({ ...f, outstanding_balance: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Status</label>
+                    <select
+                      value={loanForm.status}
+                      onChange={(e) => setLoanForm((f) => ({ ...f, status: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none"
+                    >
+                      <option value="ACTIVE">Active</option>
+                      <option value="CLOSED">Closed</option>
+                      <option value="DEFAULTED">Defaulted</option>
+                    </select>
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Notes / Terms</label>
+                <textarea
+                  rows={2}
+                  placeholder="Additional details..."
+                  value={loanForm.notes}
+                  onChange={(e) => setLoanForm((f) => ({ ...f, notes: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none resize-none"
+                />
               </div>
 
               <div className="flex justify-end gap-2 pt-2">
@@ -632,10 +891,10 @@ export default function PayrollPage() {
                 </button>
                 <button
                   type="submit"
-                  disabled={saveLoanMutation.isPending}
+                  disabled={isPending}
                   className="px-4 py-2 text-sm text-white bg-purple-600 hover:bg-purple-700 rounded-lg font-medium disabled:opacity-50"
                 >
-                  {saveLoanMutation.isPending ? 'Granting...' : 'Grant Loan'}
+                  {isPending ? 'Saving...' : editingLoan ? 'Update Loan' : 'Grant Loan'}
                 </button>
               </div>
             </form>
