@@ -1,7 +1,8 @@
 import uuid
+from uuid import UUID
 from datetime import datetime, date as DateType, time as TimeType
 from decimal import Decimal
-from sqlalchemy import String, Boolean, Enum, ForeignKey, Numeric, Date, Time, JSON
+from sqlalchemy import String, Boolean, Enum, ForeignKey, Numeric, Date, Time, JSON, UUID as SQLAlchemyUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from typing import Optional
 from backend.models.base import Base, UUIDMixin, TimestampMixin, SoftDeleteMixin
@@ -55,7 +56,7 @@ class Transaction(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
     tags: Mapped[Optional[list[str]]] = mapped_column(JSON, nullable=True)
     status: Mapped[TransactionStatus] = mapped_column(Enum(TransactionStatus), default=TransactionStatus.COMPLETED)
     is_recurring: Mapped[bool] = mapped_column(Boolean, default=False)
-    recurring_id: Mapped[Optional[str]] = mapped_column(String(36), nullable=True)
-    transfer_id: Mapped[Optional[str]] = mapped_column(String(36), ForeignKey("transfers.id"), nullable=True)
+    recurring_id: Mapped[Optional[UUID]] = mapped_column(SQLAlchemyUUID(as_uuid=True), nullable=True)
+    transfer_id: Mapped[Optional[UUID]] = mapped_column(SQLAlchemyUUID(as_uuid=True), ForeignKey("transfers.id"), nullable=True)
     created_by: Mapped[str] = mapped_column(String(36), ForeignKey("app_users.id"), nullable=False)
 
