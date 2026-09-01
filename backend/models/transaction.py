@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime, date, time
+from datetime import datetime, date as DateType, time as TimeType
 from decimal import Decimal
 from sqlalchemy import String, Boolean, Enum, ForeignKey, Numeric, Date, Time, JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -45,8 +45,8 @@ class Transaction(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
     currency_code: Mapped[str] = mapped_column(String(3), default="INR")
     exchange_rate: Mapped[Decimal] = mapped_column(Numeric(12, 6), default=Decimal("1.0"))
     base_amount: Mapped[Decimal] = mapped_column(Numeric(18, 4), nullable=False)
-    date: Mapped[date] = mapped_column(Date, nullable=False, index=True)
-    time: Mapped[Optional[time]] = mapped_column(Time, nullable=True)
+    date: Mapped[DateType] = mapped_column(Date, nullable=False, index=True)
+    time: Mapped[Optional[TimeType]] = mapped_column(Time, nullable=True)
     description: Mapped[str] = mapped_column(String(255), nullable=False)
     notes: Mapped[Optional[str]] = mapped_column(String(1000), nullable=True)
     reference_number: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
