@@ -4,9 +4,10 @@ All models inherit from these to ensure consistent structure.
 """
 import uuid
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Optional, Union
+from uuid import UUID
 
-from sqlalchemy import Boolean, DateTime, String, func
+from sqlalchemy import Boolean, DateTime, String, UUID as SQLAlchemyUUID, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from backend.database.connection import Base
@@ -46,9 +47,14 @@ class SoftDeleteMixin:
     deleted_at: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
-    deleted_by: Mapped[Optional[str]] = mapped_column(String(36), nullable=True)
+    deleted_by: Mapped[Optional[UUID]] = mapped_column(
+        SQLAlchemyUUID(as_uuid=True), nullable=True
+    )
 
-    def soft_delete(self, deleted_by_id: str) -> None:
+    def soft_delete(self, deleted_by_id: Union[UUID, str]) -> None:
         self.is_deleted = True
         self.deleted_at = datetime.now(timezone.utc)
-        self.deleted_by = deleted_by_id
+        if deleted_by_id is not None:
+            self.deleted_by = UUID(str(deleted_by_id)) if not isinstance(deleted_by_id, UUID) else deleted_by_id
+        else:
+            self.deleted_by = None
