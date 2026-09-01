@@ -32,8 +32,8 @@ class Settings(BaseSettings):
     debug: bool = True
     api_prefix: str = "/api/v1"
 
-    # Database — loaded strictly from backend/.env (DATABASE_URL)
-    database_url: str = ""
+    # Database — loaded strictly from backend/.env (DATABASE_URL), fallback to local SQLite
+    database_url: str = "sqlite+aiosqlite:///./daytoexpense.db"
 
     # JWT Authentication
     jwt_secret_key: str = "daytoexpense-dev-secret-key-change-in-production-1234567890"

@@ -25,8 +25,8 @@ def _build_engine_url(url: str) -> str:
     - mysql+pymysql:// / mysql:// → mysql+aiomysql:// or mysql+asyncmy://
     - sqlite:// → sqlite+aiosqlite://
     """
-    if not url:
-        raise ValueError("DATABASE_URL environment variable is missing or empty. Please specify DATABASE_URL in backend/.env")
+    if not url or not url.strip():
+        return "sqlite+aiosqlite:///./daytoexpense.db"
 
     while url.startswith("DATABASE_URL="):
         url = url.replace("DATABASE_URL=", "", 1).strip()
