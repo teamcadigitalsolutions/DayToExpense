@@ -1,0 +1,134 @@
+# ==============================================================================
+# DayToExpense - Git Ignore (VPS & Production Ready)
+# Frontend: frontend/ (React.js + Vite)
+# Backend:  backend/  (FastAPI + Python)
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# 1. Global & Python Cache (Explicitly ignoring all pycache)
+# ------------------------------------------------------------------------------
+**/__pycache__/
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# ------------------------------------------------------------------------------
+# 2. Environment Variables & Secrets (Keep .env.example tracked)
+# ------------------------------------------------------------------------------
+.env
+.env.*
+!.env.example
+!.env.template
+**/.env
+**/.env.*
+!**/.env.example
+!**/.env.template
+frontend/.env
+backend/.env
+*.pem
+*.key
+*.cert
+*.crt
+
+# ------------------------------------------------------------------------------
+# 3. Backend Specific (FastAPI / Python in backend/)
+# ------------------------------------------------------------------------------
+# Virtual Environments
+backend/.venv/
+backend/venv/
+backend/env/
+.venv/
+venv/
+env/
+
+# Python caches inside backend
+backend/**/__pycache__/
+backend/.pytest_cache/
+backend/.mypy_cache/
+backend/.ruff_cache/
+
+# Local databases & logs
+backend/*.db
+backend/daytoexpense.db
+backend/db/*.db
+*.sqlite
+*.sqlite3
+*.db
+backend/*.log
+backend/logs/
+*.log
+
+# ------------------------------------------------------------------------------
+# 4. Frontend Specific (React + Vite in frontend/ and root)
+# ------------------------------------------------------------------------------
+# Node dependencies
+frontend/node_modules/
+node_modules/
+.pnp/
+.pnp.js
+
+# Build outputs
+frontend/dist/
+frontend/dist-ssr/
+frontend/build/
+dist/
+dist-ssr/
+build/
+out/
+
+# Vite Cache
+frontend/.vite/
+.vite/
+
+# TypeScript build info
+frontend/*.tsbuildinfo
+frontend/tsconfig*.tsbuildinfo
+*.tsbuildinfo
+tsconfig.tsbuildinfo
+tsconfig.node.tsbuildinfo
+
+# Debug & npm logs
+frontend/npm-debug.log*
+frontend/yarn-error.log*
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ------------------------------------------------------------------------------
+# 5. OS & IDE Specific Files
+# ------------------------------------------------------------------------------
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+desktop.ini
+$RECYCLE.BIN/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+
+# IDEs
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+*.swp
+*.swo
+
+# ------------------------------------------------------------------------------
+# 6. Temp / Scratch Folders
+# ------------------------------------------------------------------------------
+scratch/
+tmp/
+temp/
