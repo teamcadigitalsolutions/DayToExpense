@@ -35,6 +35,8 @@ backend/.env
 *.key
 *.cert
 *.crt
+*.txt
+*.pdf
 
 # ------------------------------------------------------------------------------
 # 3. Backend Specific (FastAPI / Python in backend/)
