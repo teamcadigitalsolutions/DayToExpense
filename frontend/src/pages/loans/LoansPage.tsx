@@ -685,25 +685,26 @@ export default function LoansPage() {
 
       {/* Track Repayment Schedule Drawer / Modal */}
       {scheduleLoan && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[85vh]">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-gray-50/50">
-              <div>
-                <h3 className="font-bold text-gray-900 text-base flex items-center gap-2">
-                  <Calendar size={18} className="text-purple-600" /> Repayment Schedule — {scheduleLoan.name}
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-3 sm:p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-100 bg-gray-50/50">
+              <div className="min-w-0 pr-2">
+                <h3 className="font-bold text-gray-900 text-sm sm:text-base flex items-center gap-2 truncate">
+                  <Calendar size={18} className="text-purple-600 shrink-0" />
+                  <span className="truncate">Repayment Schedule — {scheduleLoan.name}</span>
                 </h3>
-                <p className="text-xs text-gray-500 mt-0.5">
-                  Provider: {scheduleLoan.institution} • Total Cost: {formatAmount(scheduleLoan.total_item_cost)}
+                <p className="text-xs text-gray-500 mt-0.5 truncate">
+                  Provider: {scheduleLoan.institution || 'N/A'} • Total Cost: {formatAmount(scheduleLoan.total_item_cost)}
                 </p>
               </div>
-              <button onClick={() => setScheduleLoan(null)} className="text-gray-400 hover:text-gray-600">
+              <button onClick={() => setScheduleLoan(null)} className="text-gray-400 hover:text-gray-600 p-1 shrink-0">
                 <X size={20} />
               </button>
             </div>
 
-            <div className="p-6 overflow-y-auto space-y-4">
+            <div className="p-4 sm:p-6 overflow-y-auto space-y-4">
               {/* Schedule Summary Bar */}
-              <div className="grid grid-cols-3 gap-3 bg-purple-50/60 border border-purple-100 p-3.5 rounded-xl text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-3 bg-purple-50/60 border border-purple-100 p-3 sm:p-3.5 rounded-xl text-xs">
                 <div>
                   <span className="text-purple-700 font-medium block">Financed Amount</span>
                   <span className="text-sm font-bold text-purple-900">{formatAmount(scheduleLoan.financed_amount)}</span>
@@ -719,8 +720,8 @@ export default function LoansPage() {
               </div>
 
               {/* Installments Table */}
-              <div className="border border-gray-200 rounded-xl overflow-hidden">
-                <table className="w-full text-left text-xs">
+              <div className="w-full max-w-full border border-gray-200 rounded-xl overflow-x-auto">
+                <table className="w-full min-w-[520px] text-left text-xs">
                   <thead className="bg-gray-50 text-gray-600 font-semibold border-b border-gray-200">
                     <tr>
                       <th className="py-2.5 px-3">#</th>
@@ -735,7 +736,7 @@ export default function LoansPage() {
                     {generateSchedule(scheduleLoan).map((inst) => (
                       <tr key={inst.number} className={inst.isPaid ? 'bg-green-50/30 text-gray-800' : 'hover:bg-gray-50'}>
                         <td className="py-2.5 px-3 font-bold text-gray-600">Month {inst.number}</td>
-                        <td className="py-2.5 px-3 text-gray-600">{inst.dueDate}</td>
+                        <td className="py-2.5 px-3 text-gray-600 whitespace-nowrap">{inst.dueDate}</td>
                         <td className="py-2.5 px-3 text-right font-bold text-gray-900">{formatAmount(inst.emiAmount)}</td>
                         <td className="py-2.5 px-3 text-right text-gray-700">{formatAmount(inst.principal)}</td>
                         <td className="py-2.5 px-3 text-right text-gray-500">{formatAmount(inst.interest)}</td>
@@ -757,7 +758,7 @@ export default function LoansPage() {
               </div>
             </div>
 
-            <div className="px-6 py-3 bg-gray-50 border-t border-gray-100 flex justify-end">
+            <div className="px-4 sm:px-6 py-3 bg-gray-50 border-t border-gray-100 flex justify-end">
               <button
                 onClick={() => setScheduleLoan(null)}
                 className="px-4 py-2 bg-gray-900 hover:bg-black text-white text-xs font-semibold rounded-lg"

@@ -551,9 +551,10 @@ export default function SmartHubPage() {
                 No active loan or credit card debts recorded. Click "Add Debt Account" above.
               </div>
             ) : (
-              <table className="w-full text-xs">
-                <thead>
-                  <tr className="bg-gray-50 text-gray-500 border-b border-gray-200">
+              <div className="w-full max-w-full overflow-x-auto">
+                <table className="w-full min-w-[500px] text-xs">
+                  <thead>
+                    <tr className="bg-gray-50 text-gray-500 border-b border-gray-200">
                     <th className="text-left p-3 font-semibold">Loan / Credit Account</th>
                     <th className="text-right p-3 font-semibold">Outstanding Balance</th>
                     <th className="text-right p-3 font-semibold">Interest Rate</th>
@@ -577,6 +578,7 @@ export default function SmartHubPage() {
                   ))}
                 </tbody>
               </table>
+              </div>
             )}
           </div>
         </div>

@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.models.account import Account
 from backend.models.transaction import Transaction
-from backend.models.all_models import Investment, Loan, Invoice, InvoiceStatus, TransactionCategory
+from backend.models.all_models import Investment, Loan, Invoice, InvoiceStatus, TransactionCategory, Setting
 from backend.utils.decimal_utils import safe_decimal, round_money, calculate_percentage
 from backend.utils.date_utils import get_period_dates, get_last_n_months
 from backend.services.transaction_service import TransactionService
@@ -52,38 +52,65 @@ class DashboardService:
 
         # Credit card outstanding
         cc_result = await self.db.execute(
-            select(func.sum(Account.credit_limit - Account.current_balance)).where(
+            select(func.sum(Account.current_balance)).where(
                 Account.workspace_id == workspace_id,
                 Account.account_type == "CREDIT_CARD",
                 Account.is_deleted == False,
+                Account.current_balance < 0
             )
         )
-        cc_outstanding = safe_decimal(cc_result.scalar_one_or_none())
+        cc_outstanding = abs(safe_decimal(cc_result.scalar_one_or_none()))
 
         # Loan outstanding
-        loan_result = await self.db.execute(
-            select(func.sum(Loan.outstanding_balance)).where(
-                Loan.workspace_id == workspace_id,
-                Loan.status == "ACTIVE",
-                Loan.is_deleted == False,
+        # Try to read smart loans from Settings first
+        setting_res = await self.db.execute(
+            select(Setting.value).where(
+                Setting.workspace_id == workspace_id,
+                Setting.key == f"smart_loans_{workspace_id}"
             )
         )
-        loan_outstanding = safe_decimal(loan_result.scalar_one_or_none())
+        smart_loans_val = setting_res.scalars().first()
+        loan_outstanding = Decimal("0")
+        if smart_loans_val and isinstance(smart_loans_val, list):
+            loan_outstanding = sum(safe_decimal(l.get("outstanding_balance", 0)) for l in smart_loans_val if str(l.get("status", "")).upper() == "ACTIVE")
+        else:
+            loan_result = await self.db.execute(
+                select(func.sum(Loan.outstanding_balance)).where(
+                    Loan.workspace_id == workspace_id,
+                    Loan.status == "ACTIVE",
+                    Loan.is_deleted == False,
+                )
+            )
+            loan_outstanding = safe_decimal(loan_result.scalar_one_or_none())
 
         # Investments
-        inv_result = await self.db.execute(
-            select(
-                func.sum(Investment.invested_amount),
-                func.sum(Investment.current_value),
-            ).where(
-                Investment.workspace_id == workspace_id,
-                Investment.is_active == True,
-                Investment.is_deleted == False,
+        inv_setting_res = await self.db.execute(
+            select(Setting.value).where(
+                Setting.workspace_id == workspace_id,
+                Setting.key == f"custom_investments_{workspace_id}"
             )
         )
-        inv_row = inv_result.one_or_none()
-        total_invested = safe_decimal(inv_row[0] if inv_row else None)
-        current_value = safe_decimal(inv_row[1] if inv_row else None)
+        smart_inv_val = inv_setting_res.scalars().first()
+        total_invested = Decimal("0")
+        current_value = Decimal("0")
+        if smart_inv_val and isinstance(smart_inv_val, list):
+            total_invested = sum(safe_decimal(i.get("invested_amount", 0)) for i in smart_inv_val if str(i.get("status", "")).upper() == "ACTIVE")
+            current_value = sum(safe_decimal(i.get("current_value", 0)) for i in smart_inv_val if str(i.get("status", "")).upper() == "ACTIVE")
+        else:
+            inv_result = await self.db.execute(
+                select(
+                    func.sum(Investment.invested_amount),
+                    func.sum(Investment.current_value),
+                ).where(
+                    Investment.workspace_id == workspace_id,
+                    Investment.is_active == True,
+                    Investment.is_deleted == False,
+                )
+            )
+            inv_row = inv_result.one_or_none()
+            total_invested = safe_decimal(inv_row[0] if inv_row else None)
+            current_value = safe_decimal(inv_row[1] if inv_row else None)
+            
         inv_profit_loss = current_value - total_invested if current_value else Decimal("0")
 
         # Receivable (SENT/PARTIALLY_PAID invoices balance)
@@ -136,15 +163,26 @@ class DashboardService:
         bank_assets = safe_decimal(asset_result.scalar_one_or_none())
 
         # Investment current values
-        inv_result = await self.db.execute(
-            select(func.sum(Investment.current_value)).where(
-                Investment.workspace_id == workspace_id,
-                Investment.is_active == True,
-                Investment.is_deleted == False,
-                Investment.current_value.isnot(None),
+        inv_setting_res = await self.db.execute(
+            select(Setting.value).where(
+                Setting.workspace_id == workspace_id,
+                Setting.key == f"custom_investments_{workspace_id}"
             )
         )
-        investment_assets = safe_decimal(inv_result.scalar_one_or_none())
+        smart_inv_val = inv_setting_res.scalars().first()
+        investment_assets = Decimal("0")
+        if smart_inv_val and isinstance(smart_inv_val, list):
+            investment_assets = sum(safe_decimal(i.get("current_value", 0)) for i in smart_inv_val if str(i.get("status", "")).upper() == "ACTIVE")
+        else:
+            inv_result = await self.db.execute(
+                select(func.sum(Investment.current_value)).where(
+                    Investment.workspace_id == workspace_id,
+                    Investment.is_active == True,
+                    Investment.is_deleted == False,
+                    Investment.current_value.isnot(None),
+                )
+            )
+            investment_assets = safe_decimal(inv_result.scalar_one_or_none())
 
         total_assets = bank_assets + investment_assets
 
@@ -154,18 +192,30 @@ class DashboardService:
                 Account.workspace_id == workspace_id,
                 Account.account_type == "CREDIT_CARD",
                 Account.is_deleted == False,
+                Account.current_balance < 0
             )
         )
-        cc_balance = safe_decimal(cc_result.scalar_one_or_none())
+        cc_balance = abs(safe_decimal(cc_result.scalar_one_or_none()))
 
-        loan_result = await self.db.execute(
-            select(func.sum(Loan.outstanding_balance)).where(
-                Loan.workspace_id == workspace_id,
-                Loan.status == "ACTIVE",
-                Loan.is_deleted == False,
+        setting_res = await self.db.execute(
+            select(Setting.value).where(
+                Setting.workspace_id == workspace_id,
+                Setting.key == f"smart_loans_{workspace_id}"
             )
         )
-        loan_balance = safe_decimal(loan_result.scalar_one_or_none())
+        smart_loans_val = setting_res.scalars().first()
+        loan_balance = Decimal("0")
+        if smart_loans_val and isinstance(smart_loans_val, list):
+            loan_balance = sum(safe_decimal(l.get("outstanding_balance", 0)) for l in smart_loans_val if str(l.get("status", "")).upper() == "ACTIVE")
+        else:
+            loan_result = await self.db.execute(
+                select(func.sum(Loan.outstanding_balance)).where(
+                    Loan.workspace_id == workspace_id,
+                    Loan.status == "ACTIVE",
+                    Loan.is_deleted == False,
+                )
+            )
+            loan_balance = safe_decimal(loan_result.scalar_one_or_none())
 
         total_liabilities = cc_balance + loan_balance
         net_worth = total_assets - total_liabilities
