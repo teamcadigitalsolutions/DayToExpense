@@ -2237,14 +2237,14 @@ async def purchase_wishlist_item(
 
         total_amount = round_money(final_price * item.quantity)
 
-        # Validate category_id exists in this workspace to prevent Foreign Key Violation errors in PostgreSQL
+        # Validate category_id exists (system or custom workspace category)
         target_category_id = None
         if req.category_id:
             cat_check = await db.execute(
                 select(TransactionCategory.id).where(
                     TransactionCategory.id == req.category_id,
-                    TransactionCategory.workspace_id == workspace_id,
-                    TransactionCategory.is_active == True
+                    TransactionCategory.is_active == True,
+                    (TransactionCategory.is_system == True) | (TransactionCategory.workspace_id == workspace_id)
                 )
             )
             target_category_id = cat_check.scalar_one_or_none()
@@ -2252,9 +2252,9 @@ async def purchase_wishlist_item(
         if not target_category_id:
             fallback_cat = await db.execute(
                 select(TransactionCategory.id).where(
-                    TransactionCategory.workspace_id == workspace_id,
-                    TransactionCategory.type == "EXPENSE",
-                    TransactionCategory.is_active == True
+                    TransactionCategory.is_active == True,
+                    (TransactionCategory.type == "EXPENSE") | (TransactionCategory.type == "BOTH"),
+                    (TransactionCategory.is_system == True) | (TransactionCategory.workspace_id == workspace_id)
                 ).limit(1)
             )
             target_category_id = fallback_cat.scalar_one_or_none()

@@ -102,8 +102,13 @@ export default function WishlistPage() {
   const purchaseMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: any }) => wishlistService.purchase(wsId, id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['wishlist', wsId] });
-      queryClient.invalidateQueries({ queryKey: ['accounts', wsId] });
+      queryClient.invalidateQueries({ queryKey: ['wishlist'] });
+      queryClient.invalidateQueries({ queryKey: ['accounts'] });
+      queryClient.invalidateQueries({ queryKey: ['expense'] });
+      queryClient.invalidateQueries({ queryKey: ['expenses'] });
+      queryClient.invalidateQueries({ queryKey: ['transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['income'] });
       setIsPurchaseOpen(false);
       setActiveItem(null);
     },
@@ -112,7 +117,13 @@ export default function WishlistPage() {
   const advanceMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: any }) => wishlistService.recordAdvance(wsId, id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['accounts', wsId] });
+      queryClient.invalidateQueries({ queryKey: ['wishlist'] });
+      queryClient.invalidateQueries({ queryKey: ['accounts'] });
+      queryClient.invalidateQueries({ queryKey: ['expense'] });
+      queryClient.invalidateQueries({ queryKey: ['expenses'] });
+      queryClient.invalidateQueries({ queryKey: ['transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['income'] });
       setIsAdvanceOpen(false);
       setActiveItem(null);
     },
@@ -190,11 +201,13 @@ export default function WishlistPage() {
   const handlePurchaseSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!activeItem) return;
+    const finalAccountId = purchaseForm.account_id || accounts[0]?.id;
+    const finalCategoryId = purchaseForm.category_id || expenseCategories[0]?.id;
     purchaseMutation.mutate({
       id: activeItem.id,
       data: {
-        account_id: purchaseForm.account_id,
-        category_id: purchaseForm.category_id,
+        account_id: finalAccountId,
+        category_id: finalCategoryId,
         price: purchaseForm.price ? parseFloat(purchaseForm.price) : undefined,
         record_expense: purchaseForm.record_expense,
       },
