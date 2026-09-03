@@ -46,6 +46,9 @@ export default function IncomePage() {
     enabled: !!wsId,
   });
 
+  const accMap = new Map(accounts.map((a: any) => [a.id, a.name]));
+  const catMap = new Map(categories.map((c: any) => [c.id, c.name]));
+
   const rawTransactions = data?.items ?? [];
   const transactions = [...rawTransactions].sort((a: any, b: any) => {
     const da = new Date(a.date).getTime();
@@ -141,7 +144,7 @@ export default function IncomePage() {
         </div>
       </div>
 
-      <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+      <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto shadow-sm">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-gray-200 bg-gray-50">
@@ -176,21 +179,26 @@ export default function IncomePage() {
                 </td>
               </tr>
             ) : (
-              transactions.map((tx: any) => (
-                <tr key={tx.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 text-gray-500 font-mono text-xs whitespace-nowrap">
-                    {new Date(tx.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
-                  </td>
-                  <td className="px-4 py-3 font-medium text-gray-900">{tx.description || tx.category_name || 'Income'}</td>
-                  <td className="px-4 py-3">
-                    {tx.category_name && (
-                      <span className="text-xs px-2.5 py-0.5 rounded-full font-medium bg-green-100 text-green-700">
-                        {tx.category_name}
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-xs text-gray-500">{tx.account_name || '—'}</td>
-                  <td className="px-4 py-3 text-right font-semibold text-green-600">{formatAmount(tx.amount)}</td>
+              transactions.map((tx: any) => {
+                const categoryLabel = tx.category_name || (tx.category_id ? catMap.get(tx.category_id) : null);
+                const accountLabel = tx.account_name || (tx.account_id ? accMap.get(tx.account_id) : null) || '—';
+                return (
+                  <tr key={tx.id} className="hover:bg-gray-50">
+                    <td className="px-4 py-3 text-gray-500 font-mono text-xs whitespace-nowrap">
+                      {new Date(tx.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                    </td>
+                    <td className="px-4 py-3 font-medium text-gray-900">{tx.description || categoryLabel || 'Income'}</td>
+                    <td className="px-4 py-3">
+                      {categoryLabel ? (
+                        <span className="text-xs px-2.5 py-0.5 rounded-full font-medium bg-green-100 text-green-700">
+                          {categoryLabel}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-gray-400">—</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-xs text-gray-700 font-medium">{accountLabel}</td>
+                    <td className="px-4 py-3 text-right font-semibold text-green-600">{formatAmount(tx.amount)}</td>
                   <td className="px-4 py-3 text-center">
                     <div className="flex items-center justify-center gap-2">
                       <button
@@ -210,7 +218,8 @@ export default function IncomePage() {
                     </div>
                   </td>
                 </tr>
-              ))
+                );
+              })
             )}
           </tbody>
         </table>

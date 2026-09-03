@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Search, X, Pencil, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
+import { Plus, Search, X, Pencil, Trash2, ChevronDown, ChevronUp, Sparkles, FileText } from 'lucide-react';
 import { transactionService, accountService, categoryService } from '../../services';
 import { useAuthStore } from '../../stores/authStore';
 import { useCurrency, useDebounce } from '../../hooks';
 import AmountCalculatorInput from '../../components/AmountCalculatorInput';
 import { autoSuggestCategory } from '../../utils/autoCategorize';
+import ReceiptOCRModal from '../../components/ReceiptOCRModal';
 
 const EMPTY_FORM = {
   account_id: '',
@@ -24,6 +25,7 @@ export default function ExpensesPage() {
   const qc = useQueryClient();
 
   const [isOpen, setIsOpen] = useState(false);
+  const [isOcrOpen, setIsOcrOpen] = useState(false);
   const [editingTx, setEditingTx] = useState<any>(null);
   const [form, setForm] = useState({ ...EMPTY_FORM });
   const [sortDir, setSortDir] = useState<'desc' | 'asc'>('desc');
@@ -46,6 +48,9 @@ export default function ExpensesPage() {
     queryFn: () => categoryService.list(wsId, 'EXPENSE'),
     enabled: !!wsId,
   });
+
+  const accMap = new Map(accounts.map((a: any) => [a.id, a.name]));
+  const catMap = new Map(categories.map((c: any) => [c.id, c.name]));
 
   const rawTransactions = data?.items ?? [];
   const transactions = [...rawTransactions].sort((a: any, b: any) => {
@@ -134,6 +139,13 @@ export default function ExpensesPage() {
             />
           </div>
           <button
+            onClick={() => setIsOcrOpen(true)}
+            className="flex items-center gap-1.5 px-3.5 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-sm font-semibold rounded-lg border border-indigo-200 shadow-sm transition-colors"
+            title="Scan Receipt Photo with AI"
+          >
+            <Sparkles size={16} className="text-indigo-600 animate-pulse" /> Scan Receipt (AI)
+          </button>
+          <button
             onClick={() => { setEditingTx(null); setForm({ ...EMPTY_FORM }); setIsOpen(true); }}
             className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 shadow-sm"
           >
@@ -142,7 +154,7 @@ export default function ExpensesPage() {
         </div>
       </div>
 
-      <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+      <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto shadow-sm">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-gray-200 bg-gray-50">
@@ -177,41 +189,47 @@ export default function ExpensesPage() {
                 </td>
               </tr>
             ) : (
-              transactions.map((tx: any) => (
-                <tr key={tx.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 text-gray-500 font-mono text-xs whitespace-nowrap">
-                    {new Date(tx.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
-                  </td>
-                  <td className="px-4 py-3 font-medium text-gray-900">{tx.description || tx.category_name || 'Expense'}</td>
-                  <td className="px-4 py-3">
-                    {tx.category_name && (
-                      <span className="text-xs px-2.5 py-0.5 rounded-full font-medium bg-red-100 text-red-700">
-                        {tx.category_name}
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-xs text-gray-500">{tx.account_name || '—'}</td>
-                  <td className="px-4 py-3 text-right font-semibold text-red-600">{formatAmount(tx.amount)}</td>
-                  <td className="px-4 py-3 text-center">
-                    <div className="flex items-center justify-center gap-2">
-                      <button
-                        onClick={() => openEdit(tx)}
-                        className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                        title="Edit"
-                      >
-                        <Pencil size={14} />
-                      </button>
-                      <button
-                        onClick={() => setDeleteConfirm(tx.id)}
-                        className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                        title="Delete"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))
+              transactions.map((tx: any) => {
+                const categoryLabel = tx.category_name || (tx.category_id ? catMap.get(tx.category_id) : null);
+                const accountLabel = tx.account_name || (tx.account_id ? accMap.get(tx.account_id) : null) || '—';
+                return (
+                  <tr key={tx.id} className="hover:bg-gray-50">
+                    <td className="px-4 py-3 text-gray-500 font-mono text-xs whitespace-nowrap">
+                      {new Date(tx.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                    </td>
+                    <td className="px-4 py-3 font-medium text-gray-900">{tx.description || categoryLabel || 'Expense'}</td>
+                    <td className="px-4 py-3">
+                      {categoryLabel ? (
+                        <span className="text-xs px-2.5 py-0.5 rounded-full font-medium bg-red-100 text-red-700">
+                          {categoryLabel}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-gray-400">—</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-xs text-gray-700 font-medium">{accountLabel}</td>
+                    <td className="px-4 py-3 text-right font-semibold text-red-600">{formatAmount(tx.amount)}</td>
+                    <td className="px-4 py-3 text-center">
+                      <div className="flex items-center justify-center gap-2">
+                        <button
+                          onClick={() => openEdit(tx)}
+                          className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                          title="Edit"
+                        >
+                          <Pencil size={14} />
+                        </button>
+                        <button
+                          onClick={() => setDeleteConfirm(tx.id)}
+                          className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                          title="Delete"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>
@@ -349,6 +367,9 @@ export default function ExpensesPage() {
           </div>
         </div>
       )}
+
+      {/* AI Receipt Scanner Modal */}
+      <ReceiptOCRModal isOpen={isOcrOpen} onClose={() => setIsOcrOpen(false)} />
     </div>
   );
 }

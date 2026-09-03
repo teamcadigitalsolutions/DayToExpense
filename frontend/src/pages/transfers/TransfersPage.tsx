@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, RefreshCw, Trash2 } from 'lucide-react';
 import { transferService, accountService } from '../../services';
@@ -65,7 +65,7 @@ export default function TransfersPage() {
         </div>
       )}
 
-      <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+      <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto shadow-sm">
         <table className="w-full text-sm">
           <thead><tr className="border-b border-gray-200 bg-gray-50">
             <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Date</th>

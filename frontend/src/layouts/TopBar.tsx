@@ -2,12 +2,14 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Bell, Check, Archive, Trash2, CheckCheck, X, Calendar, AlertCircle, RefreshCw, Landmark, ExternalLink,
-  User, Settings, Key, LogOut, ShieldCheck, Database, Wand2, Building2, Menu
+  User, Settings, Key, LogOut, ShieldCheck, Database, Wand2, Building2, Menu, Mic, FileText, Sparkles
 } from 'lucide-react';
 import { useAuth } from '../hooks';
 import { useNotificationStore, AppNotification } from '../stores/notificationStore';
 import { useAuthStore } from '../stores/authStore';
 import { useUIStore } from '../stores/uiStore';
+import ReceiptOCRModal from '../components/ReceiptOCRModal';
+import VoiceTextLoggerModal from '../components/VoiceTextLoggerModal';
 
 const PAGE_TITLES: Record<string, string> = {
   '/dashboard': 'Dashboard',
@@ -55,6 +57,8 @@ export default function TopBar() {
 
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isOcrOpen, setIsOcrOpen] = useState(false);
+  const [isVoiceOpen, setIsVoiceOpen] = useState(false);
   const [filterTab, setFilterTab] = useState<'UNREAD' | 'ALL' | 'ARCHIVED'>('UNREAD');
 
   const notifRef = useRef<HTMLDivElement>(null);
@@ -117,7 +121,27 @@ export default function TopBar() {
         <h1 className="text-base sm:text-lg font-semibold text-gray-800 truncate">{title}</h1>
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2 sm:gap-3">
+        {/* AI Voice Logger Shortcut */}
+        <button
+          onClick={() => setIsVoiceOpen(true)}
+          className="flex items-center gap-1 px-2.5 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-lg text-xs font-semibold border border-purple-200 transition-all shadow-sm"
+          title="AI Voice & Natural Language Logger"
+        >
+          <Mic size={14} className="text-purple-600 animate-pulse" />
+          <span className="hidden sm:inline">AI Voice</span>
+        </button>
+
+        {/* AI Receipt Scanner Shortcut */}
+        <button
+          onClick={() => setIsOcrOpen(true)}
+          className="flex items-center gap-1 px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-xs font-semibold border border-blue-200 transition-all shadow-sm"
+          title="AI Receipt & Bill OCR Scanner"
+        >
+          <FileText size={14} className="text-blue-600" />
+          <span className="hidden sm:inline">AI Scan</span>
+        </button>
+
         {/* Notification Bell Icon & Popover */}
         <div className="relative" ref={notifRef}>
           <button
@@ -368,6 +392,10 @@ export default function TopBar() {
           )}
         </div>
       </div>
+
+      {/* AI Modals */}
+      <ReceiptOCRModal isOpen={isOcrOpen} onClose={() => setIsOcrOpen(false)} />
+      <VoiceTextLoggerModal isOpen={isVoiceOpen} onClose={() => setIsVoiceOpen(false)} />
     </header>
   );
 }

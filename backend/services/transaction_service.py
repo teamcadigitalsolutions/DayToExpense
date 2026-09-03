@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.models.account import Account
 from backend.models.transaction import Transaction, TransactionType, TransactionStatus
 from backend.models.all_models import Transfer
-from backend.schemas.schemas import TransactionCreate, TransactionUpdate, TransferCreate, TransactionFilter
+from backend.schemas.schemas import TransactionCreate, TransactionUpdate, TransferCreate, TransactionFilter, TransactionResponse
 from backend.utils.decimal_utils import safe_decimal, round_money
 
 
@@ -214,30 +214,32 @@ class TransactionService:
 
     async def get_list(
         self, workspace_id: str, filters: TransactionFilter
-    ) -> tuple[list[Transaction], int]:
-        """Get paginated, filtered transactions with total count."""
-        query = select(Transaction).where(
+    ) -> tuple[list[dict], int]:
+        """Get paginated, filtered transactions with total count and joined account/category names."""
+        from backend.models.all_models import TransactionCategory, TransactionSubcategory
+
+        base_where = [
             Transaction.workspace_id == workspace_id,
             Transaction.is_deleted == False,
-        )
+        ]
 
         if filters.type:
-            query = query.where(Transaction.type == filters.type)
+            base_where.append(Transaction.type == filters.type)
         if filters.account_id:
-            query = query.where(Transaction.account_id == filters.account_id)
+            base_where.append(Transaction.account_id == filters.account_id)
         if filters.category_id:
-            query = query.where(Transaction.category_id == filters.category_id)
+            base_where.append(Transaction.category_id == filters.category_id)
         if filters.start_date:
-            query = query.where(Transaction.date >= filters.start_date)
+            base_where.append(Transaction.date >= filters.start_date)
         if filters.end_date:
-            query = query.where(Transaction.date <= filters.end_date)
+            base_where.append(Transaction.date <= filters.end_date)
         if filters.min_amount:
-            query = query.where(Transaction.amount >= safe_decimal(filters.min_amount))
+            base_where.append(Transaction.amount >= safe_decimal(filters.min_amount))
         if filters.max_amount:
-            query = query.where(Transaction.amount <= safe_decimal(filters.max_amount))
+            base_where.append(Transaction.amount <= safe_decimal(filters.max_amount))
         if filters.search:
             search = f"%{filters.search}%"
-            query = query.where(
+            base_where.append(
                 or_(
                     Transaction.description.ilike(search),
                     Transaction.notes.ilike(search),
@@ -245,20 +247,90 @@ class TransactionService:
                 )
             )
         if filters.status:
-            query = query.where(Transaction.status == filters.status)
+            base_where.append(Transaction.status == filters.status)
 
-        # Count
-        count_q = select(func.count()).select_from(query.subquery())
+        # Count total
+        count_q = select(func.count(Transaction.id)).where(*base_where)
         total = (await self.db.execute(count_q)).scalar_one()
 
-        # Paginate
+        # Query with joins
         offset = (filters.page - 1) * filters.size
-        query = query.order_by(desc(Transaction.date), desc(Transaction.created_at))
-        query = query.offset(offset).limit(filters.size)
+        query = (
+            select(
+                Transaction,
+                Account.name.label("account_name"),
+                TransactionCategory.name.label("category_name"),
+                TransactionCategory.icon.label("category_icon"),
+                TransactionCategory.color.label("category_color"),
+                TransactionSubcategory.name.label("subcategory_name"),
+            )
+            .join(Account, Transaction.account_id == Account.id, isouter=True)
+            .join(TransactionCategory, Transaction.category_id == TransactionCategory.id, isouter=True)
+            .join(TransactionSubcategory, Transaction.subcategory_id == TransactionSubcategory.id, isouter=True)
+            .where(*base_where)
+            .order_by(desc(Transaction.date), desc(Transaction.created_at))
+            .offset(offset)
+            .limit(filters.size)
+        )
 
         result = await self.db.execute(query)
-        transactions = result.scalars().all()
-        return list(transactions), total
+        rows = result.all()
+
+        items = []
+        for r in rows:
+            tx = r.Transaction
+            d = TransactionResponse.model_validate(tx).model_dump()
+            d["account_name"] = r.account_name
+            d["category_name"] = r.category_name
+            d["category_icon"] = r.category_icon
+            d["category_color"] = r.category_color
+            d["subcategory_name"] = r.subcategory_name
+            items.append(d)
+
+        return items, total
+
+    async def format_transaction_dict(self, tx: Transaction) -> dict:
+        """Format a single transaction with account and category names."""
+        from backend.models.all_models import TransactionCategory, TransactionSubcategory
+        acc_name = None
+        cat_name = None
+        cat_icon = None
+        cat_color = None
+        subcat_name = None
+
+        if tx.account_id:
+            acc_res = await self.db.execute(
+                select(Account.name).where(Account.id == tx.account_id)
+            )
+            acc_name = acc_res.scalar_one_or_none()
+
+        if tx.category_id:
+            cat_res = await self.db.execute(
+                select(TransactionCategory.name, TransactionCategory.icon, TransactionCategory.color).where(
+                    TransactionCategory.id == tx.category_id
+                )
+            )
+            cat_row = cat_res.one_or_none()
+            if cat_row:
+                cat_name = cat_row[0]
+                cat_icon = cat_row[1]
+                cat_color = cat_row[2]
+
+        if tx.subcategory_id:
+            subcat_res = await self.db.execute(
+                select(TransactionSubcategory.name).where(
+                    TransactionSubcategory.id == tx.subcategory_id
+                )
+            )
+            subcat_name = subcat_res.scalar_one_or_none()
+
+        d = TransactionResponse.model_validate(tx).model_dump()
+        d["account_name"] = acc_name
+        d["category_name"] = cat_name
+        d["category_icon"] = cat_icon
+        d["category_color"] = cat_color
+        d["subcategory_name"] = subcat_name
+        return d
 
     async def get_by_id(self, workspace_id: str, transaction_id: str) -> Transaction:
         result = await self.db.execute(

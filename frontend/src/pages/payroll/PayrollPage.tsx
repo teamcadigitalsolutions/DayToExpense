@@ -431,7 +431,7 @@ export default function PayrollPage() {
 
       {/* Tab 1: Salary & Payslips */}
       {activeTab === 'payroll' && (
-        <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+        <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto shadow-sm">
           <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
             <h3 className="font-semibold text-gray-900 text-sm">
               Salary Disbursement History — {selectedMonth} {selectedYear}

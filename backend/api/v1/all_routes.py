@@ -436,10 +436,10 @@ async def list_transactions(
         status=status, page=page, size=size,
     )
     svc = TransactionService(db)
-    transactions, total = await svc.get_list(workspace_id, filters)
+    items, total = await svc.get_list(workspace_id, filters)
     pages = (total + size - 1) // size
     return success_response({
-        "items": [TransactionResponse.model_validate(t).model_dump() for t in transactions],
+        "items": items,
         "total": total, "page": page, "size": size, "pages": pages,
     })
 
@@ -454,7 +454,8 @@ async def create_transaction(
 ):
     svc = TransactionService(db)
     tx = await svc.create(workspace_id, data, current_user.id)
-    return created_response(TransactionResponse.model_validate(tx).model_dump(), "Transaction created")
+    tx_dict = await svc.format_transaction_dict(tx)
+    return created_response(tx_dict, "Transaction created")
 
 
 @transaction_router.get("/{workspace_id}/transactions/{transaction_id}")
@@ -466,7 +467,8 @@ async def get_transaction(
 ):
     svc = TransactionService(db)
     tx = await svc.get_by_id(workspace_id, transaction_id)
-    return success_response(TransactionResponse.model_validate(tx).model_dump())
+    tx_dict = await svc.format_transaction_dict(tx)
+    return success_response(tx_dict)
 
 
 @transaction_router.put("/{workspace_id}/transactions/{transaction_id}")
@@ -480,7 +482,8 @@ async def update_transaction(
 ):
     svc = TransactionService(db)
     tx = await svc.update(workspace_id, transaction_id, data, current_user.id)
-    return success_response(TransactionResponse.model_validate(tx).model_dump(), "Transaction updated")
+    tx_dict = await svc.format_transaction_dict(tx)
+    return success_response(tx_dict, "Transaction updated")
 
 
 @transaction_router.delete("/{workspace_id}/transactions/{transaction_id}")
@@ -2234,11 +2237,33 @@ async def purchase_wishlist_item(
 
         total_amount = round_money(final_price * item.quantity)
 
+        # Validate category_id exists in this workspace to prevent Foreign Key Violation errors in PostgreSQL
+        target_category_id = None
+        if req.category_id:
+            cat_check = await db.execute(
+                select(TransactionCategory.id).where(
+                    TransactionCategory.id == req.category_id,
+                    TransactionCategory.workspace_id == workspace_id,
+                    TransactionCategory.is_active == True
+                )
+            )
+            target_category_id = cat_check.scalar_one_or_none()
+
+        if not target_category_id:
+            fallback_cat = await db.execute(
+                select(TransactionCategory.id).where(
+                    TransactionCategory.workspace_id == workspace_id,
+                    TransactionCategory.type == "EXPENSE",
+                    TransactionCategory.is_active == True
+                ).limit(1)
+            )
+            target_category_id = fallback_cat.scalar_one_or_none()
+
         tx = Transaction(
             id=str(uuid.uuid4()),
             workspace_id=workspace_id,
             account_id=account.id,
-            category_id=req.category_id,
+            category_id=target_category_id,
             type="EXPENSE",
             amount=total_amount,
             currency_code="INR",
@@ -2290,11 +2315,33 @@ async def record_wishlist_advance(
     if not account:
         raise HTTPException(status_code=404, detail="Account not found")
 
+    # Validate category_id exists in this workspace to prevent Foreign Key Violation errors in PostgreSQL
+    target_category_id = None
+    if req.category_id:
+        cat_check = await db.execute(
+            select(TransactionCategory.id).where(
+                TransactionCategory.id == req.category_id,
+                TransactionCategory.workspace_id == workspace_id,
+                TransactionCategory.is_active == True
+            )
+        )
+        target_category_id = cat_check.scalar_one_or_none()
+
+    if not target_category_id:
+        fallback_cat = await db.execute(
+            select(TransactionCategory.id).where(
+                TransactionCategory.workspace_id == workspace_id,
+                TransactionCategory.type == "INCOME",
+                TransactionCategory.is_active == True
+            ).limit(1)
+        )
+        target_category_id = fallback_cat.scalar_one_or_none()
+
     tx = Transaction(
         id=str(uuid.uuid4()),
         workspace_id=workspace_id,
         account_id=account.id,
-        category_id=req.category_id,
+        category_id=target_category_id,
         type="INCOME",
         amount=req.amount,
         currency_code="INR",

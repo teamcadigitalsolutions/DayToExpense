@@ -51,6 +51,15 @@ export default function TransactionsPage() {
     enabled: !!wsId,
   });
 
+  const { data: allCategories = [] } = useQuery({
+    queryKey: ['categories', wsId, 'ALL'],
+    queryFn: () => categoryService.list(wsId),
+    enabled: !!wsId,
+  });
+
+  const accMap = new Map(accounts.map((a: any) => [a.id, a.name]));
+  const catMap = new Map(allCategories.map((c: any) => [c.id, c.name]));
+
   const transactions = data?.items ?? [];
   const total = data?.total ?? 0;
 
@@ -126,7 +135,7 @@ export default function TransactionsPage() {
         </button>
       </div>
 
-      <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+      <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto shadow-sm">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-gray-200 bg-gray-50">
@@ -153,13 +162,23 @@ export default function TransactionsPage() {
                 </td>
               </tr>
             ) : (
-              transactions.map((tx: any) => (
-                <tr key={tx.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 text-gray-500 font-mono">{new Date(tx.date).toLocaleDateString('en-IN')}</td>
-                  <td className="px-4 py-3">
-                    <p className="font-medium text-gray-900">{tx.description || tx.category_name || 'Transaction'}</p>
-                    {tx.account_name && <p className="text-xs text-gray-500">{tx.account_name}</p>}
-                  </td>
+              transactions.map((tx: any) => {
+                const accountLabel = tx.account_name || (tx.account_id ? accMap.get(tx.account_id) : null);
+                const categoryLabel = tx.category_name || (tx.category_id ? catMap.get(tx.category_id) : null);
+                return (
+                  <tr key={tx.id} className="hover:bg-gray-50">
+                    <td className="px-4 py-3 text-gray-500 font-mono">{new Date(tx.date).toLocaleDateString('en-IN')}</td>
+                    <td className="px-4 py-3">
+                      <p className="font-medium text-gray-900">{tx.description || categoryLabel || 'Transaction'}</p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        {categoryLabel && (
+                          <span className="text-[11px] px-2 py-0.5 rounded bg-gray-100 text-gray-700 font-medium">
+                            {categoryLabel}
+                          </span>
+                        )}
+                        {accountLabel && <span className="text-xs text-gray-500 font-medium">{accountLabel}</span>}
+                      </div>
+                    </td>
                   <td className="px-4 py-3">
                     <span
                       className={
@@ -190,7 +209,8 @@ export default function TransactionsPage() {
                     </button>
                   </td>
                 </tr>
-              ))
+                );
+              })
             )}
           </tbody>
         </table>
