@@ -648,15 +648,37 @@ class TransferService:
         await self.db.commit()
 
     async def get_list(self, workspace_id: str, page: int = 1, size: int = 50) -> tuple[list, int]:
+        from sqlalchemy.orm import aliased
+        from backend.models.account import Account
+
+        FromAcc = aliased(Account, name="from_acc")
+        ToAcc = aliased(Account, name="to_acc")
+
         count_q = select(func.count()).where(
             Transfer.workspace_id == workspace_id
         )
         total = (await self.db.execute(count_q)).scalar_one()
         offset = (page - 1) * size
-        result = await self.db.execute(
-            select(Transfer)
+
+        q = (
+            select(
+                Transfer,
+                FromAcc.name.label("from_account_name"),
+                ToAcc.name.label("to_account_name"),
+            )
+            .outerjoin(FromAcc, Transfer.from_account_id == FromAcc.id)
+            .outerjoin(ToAcc, Transfer.to_account_id == ToAcc.id)
             .where(Transfer.workspace_id == workspace_id)
             .order_by(desc(Transfer.date), desc(Transfer.created_at))
-            .offset(offset).limit(size)
+            .offset(offset)
+            .limit(size)
         )
-        return list(result.scalars().all()), total
+
+        result = await self.db.execute(q)
+        items = []
+        for transfer, from_name, to_name in result.all():
+            setattr(transfer, "from_account_name", from_name)
+            setattr(transfer, "to_account_name", to_name)
+            items.append(transfer)
+
+        return items, total
