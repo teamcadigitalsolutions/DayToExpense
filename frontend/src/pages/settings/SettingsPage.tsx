@@ -84,22 +84,25 @@ export default function SettingsPage() {
   const [newType, setNewType] = useState<'EXPENSE' | 'INCOME'>('EXPENSE');
   const [ruleMsg, setRuleMsg] = useState('');
 
+  const [isLoaded, setIsLoaded] = useState(false);
+
   useEffect(() => {
     if (wsId) {
       settingsService.get(wsId, `auto_rules_${wsId}`).then((data) => {
         if (data && Array.isArray(data.data)) {
           setRules(data.data);
         }
-      });
+        setIsLoaded(true);
+      }).catch(() => setIsLoaded(true));
     }
   }, [wsId]);
 
   useEffect(() => {
-    if (wsId) {
+    if (wsId && isLoaded) {
       localStorage.setItem(`auto_rules_${wsId}`, JSON.stringify(rules));
       settingsService.save(wsId, `auto_rules_${wsId}`, { data: rules });
     }
-  }, [rules, wsId]);
+  }, [rules, wsId, isLoaded]);
 
   const handleAddRule = (e: React.FormEvent) => {
     e.preventDefault();

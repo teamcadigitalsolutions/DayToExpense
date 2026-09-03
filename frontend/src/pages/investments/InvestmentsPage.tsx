@@ -97,20 +97,23 @@ export default function InvestmentsPage() {
     } catch { return []; }
   });
 
+  const [isLoaded, setIsLoaded] = useState(false);
+
   useEffect(() => {
     if (wsId) {
       settingsService.get(wsId, `custom_investments_${wsId}`).then((d) => {
         if (d?.data && Array.isArray(d.data)) setLocalInvestments(d.data);
-      });
+        setIsLoaded(true);
+      }).catch(() => setIsLoaded(true));
     }
   }, [wsId]);
 
   useEffect(() => {
-    if (wsId) {
+    if (wsId && isLoaded) {
       localStorage.setItem(`custom_investments_${wsId}`, JSON.stringify(localInvestments));
       settingsService.save(wsId, `custom_investments_${wsId}`, { data: localInvestments });
     }
-  }, [localInvestments, wsId]);
+  }, [localInvestments, wsId, isLoaded]);
 
   // Combined Portfolio Items
   const allInvestments = backendInvestments;

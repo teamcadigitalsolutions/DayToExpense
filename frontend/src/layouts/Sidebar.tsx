@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Wallet, ArrowRightLeft, TrendingUp, TrendingDown,
   RefreshCw, BarChart2, Target, Landmark, FileText, Users, Bell, BellRing, Sparkles, FolderKanban, Shield,
   Settings, LogOut, ChevronLeft, ChevronRight, Repeat,
-  ChevronsUpDown, Building2, ShoppingBag
+  ChevronsUpDown, Building2, ShoppingBag, Activity
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useAuthStore } from '../stores/authStore';
@@ -16,6 +16,7 @@ const navItems = [
   { section: 'Overview', items: [
     { label: 'Dashboard', icon: LayoutDashboard, path: '/dashboard' },
     { label: 'Accounts', icon: Wallet, path: '/accounts' },
+    { label: 'Smart Health', icon: Activity, path: '/health' },
   ]},
   { section: 'Money Flow', items: [
     { label: 'Income', icon: TrendingUp, path: '/income' },

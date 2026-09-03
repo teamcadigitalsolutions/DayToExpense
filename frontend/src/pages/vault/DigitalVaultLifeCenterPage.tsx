@@ -233,35 +233,50 @@ export default function DigitalVaultLifeCenterPage() {
     priority: 'MEDIUM' as DailyTaskItem['priority'],
   });
 
+  const [isLoaded, setIsLoaded] = useState(false);
+
   useEffect(() => {
     if (wsId) {
-      settingsService.get(wsId, `digital_vault_${wsId}`).then((data) => {
-        if (data && Array.isArray(data.data)) setDocuments(data.data);
-      });
-      settingsService.get(wsId, `household_utilities_${wsId}`).then((data) => {
-        if (data && Array.isArray(data.data)) setUtilities(data.data);
-      });
-      settingsService.get(wsId, `daily_tasks_${wsId}`).then((data) => {
-        if (data && Array.isArray(data.data)) setTasks(data.data);
-      });
-      settingsService.get(wsId, `scratchpad_notes_${wsId}`).then((data) => {
-        if (data && typeof data === 'object' && data.text !== undefined) {
-          setScratchpadText(data.text);
-        } else if (typeof data === 'string') {
-          setScratchpadText(data);
-        }
+      Promise.all([
+        settingsService.get(wsId, `digital_vault_${wsId}`).then((data) => {
+          if (data && Array.isArray(data.data)) setDocuments(data.data);
+        }),
+        settingsService.get(wsId, `household_utilities_${wsId}`).then((data) => {
+          if (data && Array.isArray(data.data)) setUtilities(data.data);
+        }),
+        settingsService.get(wsId, `daily_tasks_${wsId}`).then((data) => {
+          if (data && Array.isArray(data.data)) setTasks(data.data);
+        }),
+        settingsService.get(wsId, `scratchpad_notes_${wsId}`).then((data) => {
+          if (data && typeof data === 'object' && data.text !== undefined) {
+            setScratchpadText(data.text);
+          } else if (typeof data === 'string') {
+            setScratchpadText(data);
+          }
+        })
+      ]).finally(() => {
+        setIsLoaded(true);
       });
     }
   }, [wsId]);
 
   useEffect(() => {
-    if (wsId) {
+    if (wsId && isLoaded) {
+      localStorage.setItem(`digital_vault_${wsId}`, JSON.stringify(documents));
+      localStorage.setItem(`household_utilities_${wsId}`, JSON.stringify(utilities));
+      settingsService.save(wsId, `digital_vault_${wsId}`, { data: documents });
+      settingsService.save(wsId, `household_utilities_${wsId}`, { data: utilities });
+    }
+  }, [documents, utilities, wsId, isLoaded]);
+
+  useEffect(() => {
+    if (wsId && isLoaded) {
       localStorage.setItem(`daily_tasks_${wsId}`, JSON.stringify(tasks));
       localStorage.setItem(`scratchpad_notes_${wsId}`, scratchpadText);
       settingsService.save(wsId, `daily_tasks_${wsId}`, { data: tasks });
       settingsService.save(wsId, `scratchpad_notes_${wsId}`, { text: scratchpadText });
     }
-  }, [tasks, scratchpadText, wsId]);
+  }, [tasks, scratchpadText, wsId, isLoaded]);
 
   const handleSaveTask = (e: React.FormEvent) => {
     e.preventDefault();

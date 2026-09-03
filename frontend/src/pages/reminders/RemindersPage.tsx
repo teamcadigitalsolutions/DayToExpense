@@ -122,22 +122,25 @@ export default function RemindersPage() {
     }
   });
 
+  const [isLoaded, setIsLoaded] = useState(false);
+
   useEffect(() => {
     if (wsId) {
       settingsService.get(wsId, `important_events_${wsId}`).then((data) => {
         if (data && Array.isArray(data.data)) {
           setEvents(data.data);
         }
-      });
+        setIsLoaded(true);
+      }).catch(() => setIsLoaded(true));
     }
   }, [wsId]);
 
   useEffect(() => {
-    if (wsId) {
+    if (wsId && isLoaded) {
       localStorage.setItem(`important_events_${wsId}`, JSON.stringify(events));
       settingsService.save(wsId, `important_events_${wsId}`, { data: events });
     }
-  }, [events, wsId]);
+  }, [events, wsId, isLoaded]);
 
   const handleSaveEvent = (e: React.FormEvent) => {
     e.preventDefault();

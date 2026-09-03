@@ -108,22 +108,25 @@ export default function ProjectStudioPage() {
     }
   });
 
+  const [isLoaded, setIsLoaded] = useState(false);
+
   useEffect(() => {
     if (wsId) {
       settingsService.get(wsId, `project_studio_${wsId}`).then((data) => {
         if (data && Array.isArray(data.data)) {
           setProjects(data.data);
         }
-      });
+        setIsLoaded(true);
+      }).catch(() => setIsLoaded(true));
     }
   }, [wsId]);
 
   useEffect(() => {
-    if (wsId) {
+    if (wsId && isLoaded) {
       localStorage.setItem(`project_studio_${wsId}`, JSON.stringify(projects));
       settingsService.save(wsId, `project_studio_${wsId}`, { data: projects });
     }
-  }, [projects, wsId]);
+  }, [projects, wsId, isLoaded]);
 
   const handleSaveProject = (e: React.FormEvent) => {
     e.preventDefault();

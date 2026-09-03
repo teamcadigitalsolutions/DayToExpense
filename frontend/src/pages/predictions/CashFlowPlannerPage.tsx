@@ -118,22 +118,25 @@ export default function CashFlowPlannerPage() {
     }
   });
 
+  const [isLoaded, setIsLoaded] = useState(false);
+
   useEffect(() => {
     if (wsId) {
       settingsService.get(wsId, `savings_buckets_${wsId}`).then((data) => {
         if (data && Array.isArray(data.data)) {
           setBuckets(data.data);
         }
-      });
+        setIsLoaded(true);
+      }).catch(() => setIsLoaded(true));
     }
   }, [wsId]);
 
   useEffect(() => {
-    if (wsId) {
+    if (wsId && isLoaded) {
       localStorage.setItem(`savings_buckets_${wsId}`, JSON.stringify(buckets));
       settingsService.save(wsId, `savings_buckets_${wsId}`, { data: buckets });
     }
-  }, [buckets, wsId]);
+  }, [buckets, wsId, isLoaded]);
 
   const [isBucketModalOpen, setIsBucketModalOpen] = useState(false);
   const [editingBucketId, setEditingBucketId] = useState<string | null>(null);

@@ -62,22 +62,27 @@ export default function LoansPage() {
     return [];
   });
 
+  const [isLoaded, setIsLoaded] = useState(false);
+
   useEffect(() => {
     if (wsId) {
       settingsService.get(wsId, `smart_loans_${wsId}`).then((data) => {
         if (Array.isArray(data)) {
           setLoans(data);
         }
+        setIsLoaded(true);
+      }).catch(() => {
+        setIsLoaded(true);
       });
     }
   }, [wsId]);
 
   useEffect(() => {
-    if (wsId) {
+    if (wsId && isLoaded) {
       localStorage.setItem(`smart_loans_${wsId}`, JSON.stringify(loans));
       settingsService.save(wsId, `smart_loans_${wsId}`, loans);
     }
-  }, [loans, wsId]);
+  }, [loans, wsId, isLoaded]);
 
   const totalOutstanding = loans
     .filter((l) => l.status === 'ACTIVE')

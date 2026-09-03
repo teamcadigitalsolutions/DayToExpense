@@ -95,22 +95,25 @@ export default function PayrollPage() {
     }
   });
 
+  const [isLoaded, setIsLoaded] = useState(false);
+
   useEffect(() => {
     if (wsId) {
       settingsService.get(wsId, `payroll_disbursements_${wsId}`).then((data) => {
         if (Array.isArray(data)) {
           setDisbursements(data);
         }
-      });
+        setIsLoaded(true);
+      }).catch(() => setIsLoaded(true));
     }
   }, [wsId]);
 
   useEffect(() => {
-    if (wsId) {
+    if (wsId && isLoaded) {
       localStorage.setItem(`payroll_disbursements_${wsId}`, JSON.stringify(disbursements));
       settingsService.save(wsId, `payroll_disbursements_${wsId}`, disbursements);
     }
-  }, [disbursements, wsId]);
+  }, [disbursements, wsId, isLoaded]);
 
   // Employee Save/Update Mutation
   const saveEmployeeMutation = useMutation({

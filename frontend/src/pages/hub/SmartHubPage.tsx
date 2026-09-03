@@ -108,18 +108,23 @@ export default function SmartHubPage() {
   // ---------------------------------------------------------------------------
   // CONSOLIDATED DB LOADER — on mount, load all hub state from DB
   // ---------------------------------------------------------------------------
+  const [isLoaded, setIsLoaded] = useState(false);
   useEffect(() => {
     if (!wsId) return;
-    settingsService.get(wsId, `smart_receipts_${wsId}`).then((d) => { if (d?.data) setReceipts(d.data); });
-    settingsService.get(wsId, `smart_groups_${wsId}`).then((d) => { if (d?.data) setGroups(d.data); });
-    settingsService.get(wsId, `smart_debts_${wsId}`).then((d) => { if (d?.data) setDebts(d.data); });
-    settingsService.get(wsId, `smart_subscriptions_${wsId}`).then((d) => { if (d?.data) setSubscriptionsList(d.data); });
-    settingsService.get(wsId, `smart_tax_${wsId}`).then((d) => { if (d && typeof d === 'object' && d.financial_year) setTaxData(d); });
-    settingsService.get(wsId, `runway_${wsId}`).then((d) => {
-      if (d) {
-        if (d.savings !== undefined) setLiquidSavings(Number(d.savings));
-        if (d.expenses !== undefined) setMonthlyEssentialExpense(Number(d.expenses));
-      }
+    Promise.all([
+      settingsService.get(wsId, `smart_receipts_${wsId}`).then((d) => { if (d?.data) setReceipts(d.data); }),
+      settingsService.get(wsId, `smart_groups_${wsId}`).then((d) => { if (d?.data) setGroups(d.data); }),
+      settingsService.get(wsId, `smart_debts_${wsId}`).then((d) => { if (d?.data) setDebts(d.data); }),
+      settingsService.get(wsId, `smart_subscriptions_${wsId}`).then((d) => { if (d?.data) setSubscriptionsList(d.data); }),
+      settingsService.get(wsId, `smart_tax_${wsId}`).then((d) => { if (d && typeof d === 'object' && d.financial_year) setTaxData(d); }),
+      settingsService.get(wsId, `runway_${wsId}`).then((d) => {
+        if (d) {
+          if (d.savings !== undefined) setLiquidSavings(Number(d.savings));
+          if (d.expenses !== undefined) setMonthlyEssentialExpense(Number(d.expenses));
+        }
+      })
+    ]).finally(() => {
+      setIsLoaded(true);
     });
   }, [wsId]);
 
@@ -127,47 +132,47 @@ export default function SmartHubPage() {
   // CONSOLIDATED DB SAVERS — save each piece of state to DB when it changes
   // ---------------------------------------------------------------------------
   useEffect(() => {
-    if (wsId) {
+    if (wsId && isLoaded) {
       localStorage.setItem(`smart_receipts_${wsId}`, JSON.stringify(receipts));
       settingsService.save(wsId, `smart_receipts_${wsId}`, { data: receipts });
     }
-  }, [receipts, wsId]);
+  }, [receipts, wsId, isLoaded]);
 
   useEffect(() => {
-    if (wsId) {
+    if (wsId && isLoaded) {
       localStorage.setItem(`smart_groups_${wsId}`, JSON.stringify(groups));
       settingsService.save(wsId, `smart_groups_${wsId}`, { data: groups });
     }
-  }, [groups, wsId]);
+  }, [groups, wsId, isLoaded]);
 
   useEffect(() => {
-    if (wsId) {
+    if (wsId && isLoaded) {
       localStorage.setItem(`smart_debts_${wsId}`, JSON.stringify(debts));
       settingsService.save(wsId, `smart_debts_${wsId}`, { data: debts });
     }
-  }, [debts, wsId]);
+  }, [debts, wsId, isLoaded]);
 
   useEffect(() => {
-    if (wsId) {
+    if (wsId && isLoaded) {
       localStorage.setItem(`smart_subscriptions_${wsId}`, JSON.stringify(subscriptionsList));
       settingsService.save(wsId, `smart_subscriptions_${wsId}`, { data: subscriptionsList });
     }
-  }, [subscriptionsList, wsId]);
+  }, [subscriptionsList, wsId, isLoaded]);
 
   useEffect(() => {
-    if (wsId) {
+    if (wsId && isLoaded) {
       localStorage.setItem(`smart_tax_${wsId}`, JSON.stringify(taxData));
       settingsService.save(wsId, `smart_tax_${wsId}`, taxData);
     }
-  }, [taxData, wsId]);
+  }, [taxData, wsId, isLoaded]);
 
   useEffect(() => {
-    if (wsId) {
+    if (wsId && isLoaded) {
       localStorage.setItem(`runway_savings_${wsId}`, String(liquidSavings));
       localStorage.setItem(`runway_expenses_${wsId}`, String(monthlyEssentialExpense));
       settingsService.save(wsId, `runway_${wsId}`, { savings: liquidSavings, expenses: monthlyEssentialExpense });
     }
-  }, [liquidSavings, monthlyEssentialExpense, wsId]);
+  }, [liquidSavings, monthlyEssentialExpense, wsId, isLoaded]);
 
   // ---------------------------------------------------------------------------
   // DERIVED STATE

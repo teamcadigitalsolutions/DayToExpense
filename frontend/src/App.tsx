@@ -31,6 +31,7 @@ const SmartHubPage = lazy(() => import('./pages/hub/SmartHubPage'));
 const ReportsPage = lazy(() => import('./pages/reports/ReportsPage'));
 const SettingsPage = lazy(() => import('./pages/settings/SettingsPage'));
 const WishlistPage = lazy(() => import('./pages/wishlist/WishlistPage'));
+const HealthPage = lazy(() => import('./pages/health/HealthPage'));
 
 function PageLoader() {
   return (
@@ -57,6 +58,7 @@ export default function App() {
               <Route element={<AppLayout />}>
                 <Route path="/dashboard" element={<DashboardPage />} />
                 <Route path="/accounts" element={<Suspense fallback={<PageLoader />}><AccountsPage /></Suspense>} />
+                <Route path="/health" element={<Suspense fallback={<PageLoader />}><HealthPage /></Suspense>} />
                 <Route path="/transactions" element={<Suspense fallback={<PageLoader />}><TransactionsPage /></Suspense>} />
                 <Route path="/income" element={<Suspense fallback={<PageLoader />}><IncomePage /></Suspense>} />
                 <Route path="/expenses" element={<Suspense fallback={<PageLoader />}><ExpensesPage /></Suspense>} />
