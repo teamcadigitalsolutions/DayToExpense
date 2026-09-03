@@ -754,7 +754,7 @@ export default function ProjectStudioPage() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1">Client Name</label>
                   <input
@@ -779,7 +779,7 @@ export default function ProjectStudioPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1">Total Contract Cost (₹)</label>
                   <input
@@ -811,13 +811,13 @@ export default function ProjectStudioPage() {
                 {/* Milestone 1 */}
                 <div className="bg-gray-50 p-3 rounded-lg border border-gray-200 space-y-2 text-xs">
                   <div className="font-semibold text-blue-700">Milestone 1 (Advance / Kickoff)</div>
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                     <input
                       type="text"
                       placeholder="Name"
                       value={projectForm.m1_name}
                       onChange={(e) => setProjectForm((f) => ({ ...f, m1_name: e.target.value }))}
-                      className="px-2.5 py-1.5 border border-gray-300 rounded text-xs col-span-1"
+                      className="px-2.5 py-1.5 border border-gray-300 rounded text-xs"
                     />
                     <input
                       type="number"
@@ -838,13 +838,13 @@ export default function ProjectStudioPage() {
                 {/* Milestone 2 */}
                 <div className="bg-gray-50 p-3 rounded-lg border border-gray-200 space-y-2 text-xs">
                   <div className="font-semibold text-blue-700">Milestone 2 (Beta / Review)</div>
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                     <input
                       type="text"
                       placeholder="Name"
                       value={projectForm.m2_name}
                       onChange={(e) => setProjectForm((f) => ({ ...f, m2_name: e.target.value }))}
-                      className="px-2.5 py-1.5 border border-gray-300 rounded text-xs col-span-1"
+                      className="px-2.5 py-1.5 border border-gray-300 rounded text-xs"
                     />
                     <input
                       type="number"
@@ -865,13 +865,13 @@ export default function ProjectStudioPage() {
                 {/* Milestone 3 */}
                 <div className="bg-gray-50 p-3 rounded-lg border border-gray-200 space-y-2 text-xs">
                   <div className="font-semibold text-blue-700">Milestone 3 (Final Launch)</div>
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                     <input
                       type="text"
                       placeholder="Name"
                       value={projectForm.m3_name}
                       onChange={(e) => setProjectForm((f) => ({ ...f, m3_name: e.target.value }))}
-                      className="px-2.5 py-1.5 border border-gray-300 rounded text-xs col-span-1"
+                      className="px-2.5 py-1.5 border border-gray-300 rounded text-xs"
                     />
                     <input
                       type="number"
@@ -945,7 +945,7 @@ export default function ProjectStudioPage() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1">Type</label>
                   <select
