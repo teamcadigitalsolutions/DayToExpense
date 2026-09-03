@@ -13,7 +13,7 @@ export default function AppLayout() {
       <Sidebar />
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
         <TopBar />
-        <main className="flex-1 overflow-y-auto p-6">
+        <main className="flex-1 overflow-y-auto p-3 sm:p-6 w-full max-w-full overflow-x-hidden">
           <Outlet />
         </main>
       </div>

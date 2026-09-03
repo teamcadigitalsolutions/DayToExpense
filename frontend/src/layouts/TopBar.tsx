@@ -109,23 +109,23 @@ export default function TopBar() {
   };
 
   return (
-    <header className="h-[60px] bg-white border-b border-gray-200 flex items-center justify-between px-4 sm:px-6 flex-shrink-0 relative z-30">
-      <div className="flex items-center gap-3 min-w-0">
+    <header className="h-[60px] bg-white border-b border-gray-200 flex items-center justify-between px-3 sm:px-6 flex-shrink-0 relative z-30">
+      <div className="flex items-center gap-2 sm:gap-3 min-w-0">
         <button
           onClick={toggleSidebar}
-          className="p-1.5 rounded-lg text-gray-600 hover:text-gray-900 hover:bg-gray-100 lg:hidden flex-shrink-0"
+          className="p-1 rounded-lg text-gray-600 hover:text-gray-900 hover:bg-gray-100 lg:hidden flex-shrink-0"
           title="Toggle Navigation Menu"
         >
           <Menu size={20} />
         </button>
-        <h1 className="text-base sm:text-lg font-semibold text-gray-800 truncate">{title}</h1>
+        <h1 className="text-sm sm:text-lg font-semibold text-gray-800 truncate">{title}</h1>
       </div>
 
-      <div className="flex items-center gap-2 sm:gap-3">
+      <div className="flex items-center gap-1.5 sm:gap-3 flex-shrink-0">
         {/* AI Voice Logger Shortcut */}
         <button
           onClick={() => setIsVoiceOpen(true)}
-          className="flex items-center gap-1 px-2.5 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-lg text-xs font-semibold border border-purple-200 transition-all shadow-sm"
+          className="flex items-center gap-1 p-1.5 sm:px-2.5 sm:py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-lg text-xs font-semibold border border-purple-200 transition-all shadow-sm"
           title="AI Voice & Natural Language Logger"
         >
           <Mic size={14} className="text-purple-600 animate-pulse" />
@@ -135,7 +135,7 @@ export default function TopBar() {
         {/* AI Receipt Scanner Shortcut */}
         <button
           onClick={() => setIsOcrOpen(true)}
-          className="flex items-center gap-1 px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-xs font-semibold border border-blue-200 transition-all shadow-sm"
+          className="flex items-center gap-1 p-1.5 sm:px-2.5 sm:py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-xs font-semibold border border-blue-200 transition-all shadow-sm"
           title="AI Receipt & Bill OCR Scanner"
         >
           <FileText size={14} className="text-blue-600" />

@@ -120,32 +120,32 @@ export default function IncomePage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between flex-wrap gap-3">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 w-full">
         <div>
           <p className="text-xs text-gray-500 font-medium">Total Income</p>
-          <p className="text-2xl font-bold text-green-600">{formatAmount(total)}</p>
+          <p className="text-xl sm:text-2xl font-bold text-green-600">{formatAmount(total)}</p>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="relative">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 w-full sm:w-auto">
+          <div className="relative w-full sm:w-52">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search income..."
-              className="pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-52"
+              className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
           <button
             onClick={() => { setEditingTx(null); setForm({ ...EMPTY_FORM }); setIsOpen(true); }}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 shadow-sm"
+            className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white text-xs sm:text-sm font-medium rounded-lg hover:bg-blue-700 shadow-sm transition-colors"
           >
             <Plus size={16} /> Add Income
           </button>
         </div>
       </div>
 
-      <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto shadow-sm">
-        <table className="w-full text-sm">
+      <div className="w-full max-w-full bg-white border border-gray-200 rounded-xl overflow-x-auto shadow-sm">
+        <table className="w-full min-w-[650px] text-sm">
           <thead>
             <tr className="border-b border-gray-200 bg-gray-50">
               <th
